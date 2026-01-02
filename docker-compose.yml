@@ -1,0 +1,94 @@
+version: '3.9'
+
+services:
+  # HACI Application
+  haci:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - HACI_ENVIRONMENT=development
+      - HACI_DATABASE__URL=postgresql://haci:haci_dev@postgres:5432/haci
+      - HACI_REDIS__URL=redis://redis:6379
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./src/haci:/app/haci:ro
+      - ./config:/app/config:ro
+    restart: unless-stopped
+    networks:
+      - haci-network
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: haci
+      POSTGRES_PASSWORD: haci_dev
+      POSTGRES_DB: haci
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U haci -d haci"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - haci-network
+
+  # Redis for Context Bus and Caching
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - haci-network
+
+  # TimescaleDB for Time-series metrics (optional)
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    environment:
+      POSTGRES_USER: haci_metrics
+      POSTGRES_PASSWORD: haci_metrics_dev
+      POSTGRES_DB: haci_metrics
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U haci_metrics -d haci_metrics"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - haci-network
+    profiles:
+      - metrics
+
+volumes:
+  postgres_data:
+  redis_data:
+  timescale_data:
+
+networks:
+  haci-network:
+    driver: bridge
