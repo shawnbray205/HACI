@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HACI Prompting Framework - Harness Phase Prompts</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --purple-color: #9b59b6;
+            --teal-color: #1abc9c;
+            --bg-light: #ecf0f1;
+            --text-dark: #2c3e50;
+            --text-light: #7f8c8d;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text-dark);
+            background: #ffffff;
+        }
+        
+        /* Page Navigation */
+        .page-nav {
+            background: var(--primary-color);
+            padding: 15px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        .page-nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .page-indicator {
+            color: white;
+            font-size: 0.95em;
+        }
+        
+        .page-indicator strong {
+            color: var(--secondary-color);
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .nav-link {
+            color: white;
+            text-decoration: none;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .nav-link:hover {
+            background: rgba(255,255,255,0.15);
+        }
+        
+        .nav-link.active {
+            background: var(--secondary-color);
+        }
+        
+        .nav-link.next {
+            background: var(--success-color);
+        }
+        
+        .nav-link.next:hover {
+            background: #219a52;
+        }
+        
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+            color: white;
+            padding: 80px 20px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 30% 70%, rgba(52, 152, 219, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 70% 30%, rgba(46, 204, 113, 0.3) 0%, transparent 50%);
+            opacity: 0.8;
+        }
+        
+        .hero-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .hero h1 {
+            font-size: 2.8em;
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+        
+        .hero .subtitle {
+            font-size: 1.3em;
+            opacity: 0.95;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        
+        /* Main Content */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 60px 20px;
+        }
+        
+        .section {
+            margin-bottom: 80px;
+        }
+        
+        .section-header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        
+        .section-title {
+            font-size: 2.3em;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            position: relative;
+            display: inline-block;
+        }
+        
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 4px;
+            background: linear-gradient(90deg, var(--secondary-color), var(--success-color));
+            border-radius: 2px;
+        }
+        
+        .section-description {
+            font-size: 1.15em;
+            color: var(--text-light);
+            max-width: 800px;
+            margin: 25px auto 0;
+        }
+        
+        /* Phase Cards */
+        .phase-container {
+            margin-bottom: 60px;
+        }
+        
+        .phase-header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        
+        .phase-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            color: white;
+        }
+        
+        .phase-icon.think { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
+        .phase-icon.act { background: linear-gradient(135deg, #3498db, #2980b9); }
+        .phase-icon.observe { background: linear-gradient(135deg, #1abc9c, #16a085); }
+        .phase-icon.evaluate { background: linear-gradient(135deg, #f39c12, #e67e22); }
+        
+        .phase-info h3 {
+            font-size: 1.8em;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+        
+        .phase-info p {
+            color: var(--text-light);
+            font-size: 1.1em;
+        }
+        
+        .phase-content {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+        
+        .phase-section {
+            padding: 30px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .phase-section:last-child {
+            border-bottom: none;
+        }
+        
+        .phase-section-title {
+            font-size: 1.2em;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .phase-section-title .icon {
+            color: var(--secondary-color);
+        }
+        
+        /* Code Block */
+        .code-block {
+            background: #1e1e1e;
+            border-radius: 12px;
+            padding: 25px;
+            overflow-x: auto;
+            margin: 20px 0;
+        }
+        
+        .code-block pre {
+            color: #d4d4d4;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.85em;
+            line-height: 1.6;
+            margin: 0;
+        }
+        
+        .code-block .comment { color: #6a9955; }
+        .code-block .keyword { color: #569cd6; }
+        .code-block .string { color: #ce9178; }
+        .code-block .variable { color: #9cdcfe; }
+        .code-block .function { color: #dcdcaa; }
+        .code-block .type { color: #4ec9b0; }
+        .code-block .number { color: #b5cea8; }
+        
+        /* Output Schema */
+        .output-schema {
+            background: var(--bg-light);
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 20px;
+        }
+        
+        .schema-title {
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+        
+        .schema-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .schema-table th,
+        .schema-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .schema-table th {
+            background: var(--primary-color);
+            color: white;
+            font-weight: 600;
+        }
+        
+        .schema-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .schema-table .type-badge {
+            background: var(--secondary-color);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.85em;
+        }
+        
+        /* Tips Box */
+        .tips-box {
+            background: linear-gradient(135deg, #e8f8f5 0%, #d1f2eb 100%);
+            border-left: 5px solid var(--success-color);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 25px 0;
+        }
+        
+        .tips-title {
+            font-weight: 700;
+            color: var(--success-color);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .tips-list {
+            list-style: none;
+        }
+        
+        .tips-list li {
+            padding: 8px 0;
+            padding-left: 25px;
+            position: relative;
+            color: var(--text-dark);
+        }
+        
+        .tips-list li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: var(--success-color);
+            font-weight: bold;
+        }
+        
+        /* Warning Box */
+        .warning-box {
+            background: linear-gradient(135deg, #fef9e7 0%, #fdebd0 100%);
+            border-left: 5px solid var(--warning-color);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 25px 0;
+        }
+        
+        .warning-title {
+            font-weight: 700;
+            color: var(--warning-color);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        /* Flow Diagram */
+        .flow-diagram {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            text-align: center;
+            margin: 40px 0;
+        }
+        
+        .flow-title {
+            font-size: 1.5em;
+            color: var(--primary-color);
+            margin-bottom: 30px;
+        }
+        
+        .flow-steps {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .flow-step {
+            padding: 20px 30px;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            position: relative;
+        }
+        
+        .flow-step.think { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
+        .flow-step.act { background: linear-gradient(135deg, #3498db, #2980b9); }
+        .flow-step.observe { background: linear-gradient(135deg, #1abc9c, #16a085); }
+        .flow-step.evaluate { background: linear-gradient(135deg, #f39c12, #e67e22); }
+        
+        .flow-arrow {
+            font-size: 1.5em;
+            color: var(--text-light);
+        }
+        
+        .flow-loop {
+            margin-top: 20px;
+            color: var(--text-light);
+            font-size: 0.95em;
+        }
+        
+        /* Navigation Footer */
+        .nav-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 30px 0;
+            border-top: 1px solid #eee;
+            margin-top: 60px;
+        }
+        
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px 30px;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-btn.prev {
+            background: var(--bg-light);
+            color: var(--text-dark);
+        }
+        
+        .nav-btn.prev:hover {
+            background: #ddd;
+        }
+        
+        .nav-btn.next {
+            background: var(--success-color);
+            color: white;
+        }
+        
+        .nav-btn.next:hover {
+            background: #219a52;
+        }
+        
+        /* Footer */
+        footer {
+            background: var(--primary-color);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .footer-title {
+            font-size: 1.3em;
+            margin-bottom: 10px;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2em;
+            }
+            
+            .phase-header {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .flow-steps {
+                flex-direction: column;
+            }
+            
+            .flow-arrow {
+                transform: rotate(90deg);
+            }
+            
+            .page-nav-container {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Page Navigation -->
+    <nav class="page-nav">
+        <div class="page-nav-container">
+            <div class="page-indicator">
+                HACI Prompting Framework | <strong>Page 2 of 4</strong> — Harness Phase Prompts
+            </div>
+            <div class="nav-links">
+                <a href="haci_prompting_1_foundations.html" class="nav-link">1. Foundations</a>
+                <a href="#" class="nav-link active">2. Harness Prompts</a>
+                <a href="haci_prompting_3_agents.html" class="nav-link">3. Agent Prompts</a>
+                <a href="haci_prompting_4_mcp.html" class="nav-link next">4. MCP Prompts →</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="hero">
+        <div class="hero-content">
+            <h1>🔄 Harness Phase Prompts</h1>
+            <div class="subtitle">
+                Structuring agent reasoning through the THINK → ACT → OBSERVE → EVALUATE loop
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="container">
+        
+        <!-- Introduction -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">The Harness Loop</h2>
+                <p class="section-description">
+                    HACI agents operate in a structured reasoning loop called the Harness Pattern. 
+                    Each phase has specific prompting requirements that guide agent behavior.
+                </p>
+            </div>
+            
+            <div class="flow-diagram">
+                <div class="flow-title">Agent Execution Cycle</div>
+                <div class="flow-steps">
+                    <div class="flow-step think">🧠 THINK</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-step act">⚡ ACT</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-step observe">👁️ OBSERVE</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-step evaluate">📊 EVALUATE</div>
+                </div>
+                <div class="flow-loop">
+                    ↺ Loop until confidence ≥80% or max iterations reached
+                </div>
+            </div>
+        </section>
+        
+        <!-- THINK Phase -->
+        <section class="section">
+            <div class="phase-container">
+                <div class="phase-header">
+                    <div class="phase-icon think">🧠</div>
+                    <div class="phase-info">
+                        <h3>THINK Phase</h3>
+                        <p>Analyze input, form hypotheses, plan investigation strategy</p>
+                    </div>
+                </div>
+                
+                <div class="phase-content">
+                    <div class="phase-section">
+                        <div class="phase-section-title">
+                            <span class="icon">📋</span> Purpose
+                        </div>
+                        <p>
+                            The THINK phase is where the agent analyzes the input (ticket, alert, or request), 
+                            forms initial hypotheses about the root cause, and plans which tools to use for investigation. 
+                            This is pure reasoning with no external actions.
+                        </p>
+                    </div>
+                    
+                    <div class="phase-section">
+                        <div class="phase-section-title">
+                            <span class="icon">📝</span> Prompt Template
+                        </div>
+                        <div class="code-block">
+                            <pre><span class="comment">## THINK Phase Instructions</span>
+
+<span class="keyword">You are now in the THINK phase.</span> Analyze the input and plan your investigation.
+
+<span class="variable">### Input</span>
+{ticket_information}
+
+<span class="variable">### Your Tasks</span>
+<span class="number">1.</span> <span class="function">Understand the Problem:</span>
+   - What symptoms are reported?
+   - What systems are affected?
+   - When did the issue start?
+   - What is the business impact?
+
+<span class="number">2.</span> <span class="function">Form Hypotheses:</span>
+   - List 2-4 possible root causes
+   - Rank them by likelihood
+   - Note what evidence would confirm/refute each
+
+<span class="number">3.</span> <span class="function">Plan Investigation:</span>
+   - Which tools will you use first?
+   - What specific queries or commands?
+   - What data are you looking for?
+
+<span class="variable">### Output Format</span>
+Respond in the following JSON structure:
+<span class="type">{
+  "understanding": {
+    "symptoms": [...],
+    "affected_systems": [...],
+    "timeline": "...",
+    "impact": "..."
+  },
+  "hypotheses": [
+    {"id": 1, "description": "...", "likelihood": 0.0-1.0, "evidence_needed": "..."},
+    ...
+  ],
+  "investigation_plan": [
+    {"step": 1, "tool": "...", "query": "...", "looking_for": "..."},
+    ...
+  ]
+}</span></pre>
+                        </div>
+                    </div>
+                    
+                    <div class="phase-section">
+                        <div class="phase-section-title">
+                            <span class="icon">📊</span> Output Schema
+                        </div>
+                        <div class="output-schema">
+                            <div class="schema-title">THINK Phase Output</div>
+                            <table class="schema-table">
+                                <tr>
+                                    <th>Field</th>
+                                    <th>Type</th>
+                                    <th>Description</th>
+                                </tr>
+                                <tr>
+                                    <td>understanding</td>
+                                    <td><span class="type-badge">object</span></td>
+                                    <td>Parsed understanding of the problem</td>
+                                </tr>
+                                <tr>
+                                    <td>hypotheses</td>
+                                    <td><span class="type-badge">array</span></td>
+                                    <td>Ranked list of possible root causes</td>
+                                </tr>
+                                <tr>
+                                    <td>investigation_plan</td>
+                                    <td><span class="type-badge">array</span></td>
+                                    <td>Ordered list of investigation steps</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="tips-box">
+                        <div class="tips-title">
+                            <span>💡</span> Best Practices
+                        </div>
+                        <ul class="tips-list">
+                            <li>Require multiple hypotheses to prevent tunnel vision</li>
+                            <li>Include likelihood scores to calibrate confidence later</li>
+                            <li>Make investigation plan specific—not just "check logs" but "search for ERROR in payment-api last 30 minutes"</li>
+                            <li>Limit hypotheses to 2-4 to maintain focus</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- ACT Phase -->
+        <section class="section">
+            <div class="phase-container">
+                <div class="phase-header">
+                    <div class="phase-icon act">⚡</div>
+                    <div class="phase-info">
+                        <h3>ACT Phase</h3>
+                        <p>Execute tools, query APIs, gather evidence</p>
+                    </div>
+                </div>
+                
+                <div class="phase-content">
+                    <div class="phase-section">
+                        <div class="phase-section-title">
+                            <span class="icon">📋</span> Purpose
+                        </div>
+                        <p>
+                            The ACT phase executes the investigation plan by calling tools, querying APIs, 
+                            and gathering data. The agent translates its plan into concrete tool invocations.
+                            This is the only phase where external actions occur.
+                        </p>
+                    </div>
+                    
+                    <div class="phase-section">
+                        <div class="phase-section-title">
+                            <span class="icon">📝</span> Prompt Template
+                        </div>
+                        <div class="code-block">
+                            <pre><span class="comment">## ACT Phase Instructions</span>
+
+<span class="keyword">You are now in the ACT phase.</span> Execute your investigation plan.
+
+<span class="variable">### Your Investigation Plan</span>
+{investigation_plan_from_think}
+
+<span class="variable">### Available Tools</span>
+{tool_definitions}
+
+<span class="variable">### Execution Rules</span>
+<span class="number">1.</span> Execute tools in the order specified in your plan
+<span class="number">2.</span> Use the <span class="function">exact tool schemas</span> provided
+<span class="number">3.</span> If a tool fails, note the error and continue with fallback
+<span class="number">4.</span> <span class="keyword">Maximum 5 tool calls</span> per ACT phase
+
+<span class="variable">### Tool Call Format</span>
+For each tool, use this format:
+<span class="type">{
+  "tool_calls": [
+    {
+      "tool_name": "log_search",
+      "arguments": {
+        "query": "level:ERROR AND service:payment-api",
+        "time_range": "30m",
+        "limit": 100
+      }
+    },
+    ...
+  ]
+}</span>
+
+<span class="variable">### Important</span>
+- Do NOT make up tool responses
+- Do NOT assume what tools will return
+- Wait for actual tool execution results</pre>
+                        </div>
+                    </div>
+                    
+                    <div class="warning-box">
+                        <div class="warning-title">
+                            <span>⚠️</span> Critical: Prevent Hallucinated Actions
+                        </div>
+                        <p>
+                            A common failure mode is agents "imagining" tool results instead of waiting for 
+                            actual execution. Always include explicit instructions like "Do NOT assume what 
+                            tools will return" and "Wait for actual tool execution results."
+                        </p>
+                    </div>
+                    
+                    <div class="phase-section">
+                        <div class="phase-section-title">
+                            <span class="icon">🛡️</span> Governance Controls
+                        </div>
+                        <p>
+                            Depending on execution mode, certain actions require human approval before execution:
+                        </p>
+                        <div class="code-block">
+                            <pre><span class="comment">### Mode-Specific ACT Constraints</span>
+
+<span class="keyword">Single Agent Mode:</span>
+- Read-only tools: <span class="string">Execute freely</span>
+- Write tools: <span class="string">Require human approval</span>
+
+<span class="keyword">Micro-Swarm Mode:</span>
+- Read-only tools: <span class="string">Execute freely</span>
+- Write tools: <span class="string">Require coordinator approval</span>
+
+<span class="keyword">Full Swarm Mode:</span>
+- All agents: <span class="string">Read-only only</span>
+- Write actions: <span class="string">Escalate to coordinator</span>
+
+<span class="keyword">Human-Led Mode:</span>
+- All tools: <span class="string">Suggest only, human executes</span></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- OBSERVE Phase -->
+        <section class="section">
+            <div class="phase-container">
+                <div class="phase-header">
+                    <div class="phase-icon observe">👁️</div>
+                    <div class="phase-info">
+                        <h3>OBSERVE Phase</h3>
+                        <p>Process tool results, identify patterns, integrate findings</p>
+                    </div>
+                </div>
+                
+                <div class="phase-content">
+                    <div class="phase-section">
+                        <div class="phase-section-title">
+                            <span class="icon">📋</span> Purpose
+                        </div>
+                        <p>
+                            The OBSERVE phase processes the results from tool execution. The agent analyzes 
+                            outputs, identifies patterns, correlates data points, and integrates findings 
+                            with existing hypotheses.
+                        </p>
+                    </div>
+                    
+                    <div class="phase-section">
+                        <div class="phase-section-title">
+                            <span class="icon">📝</span> Prompt Template
+                        </div>
+                        <div class="code-block">
+                            <pre><span class="comment">## OBSERVE Phase Instructions</span>
+
+<span class="keyword">You are now in the OBSERVE phase.</span> Analyze the tool results.
+
+<span class="variable">### Tool Execution Results</span>
+{tool_results}
+
+<span class="variable">### Your Hypotheses</span>
+{hypotheses_from_think}
+
+<span class="variable">### Analysis Tasks</span>
+<span class="number">1.</span> <span class="function">Pattern Recognition:</span>
+   - What patterns emerge from the data?
+   - Are there correlations between different data sources?
+   - What anomalies stand out?
+
+<span class="number">2.</span> <span class="function">Hypothesis Validation:</span>
+   - Does the evidence support or refute your hypotheses?
+   - Update likelihood scores based on evidence
+   - What new hypotheses emerge?
+
+<span class="number">3.</span> <span class="function">Evidence Quality:</span>
+   - How reliable is each piece of evidence?
+   - Are there gaps in the data?
+   - What additional investigation is needed?
+
+<span class="variable">### Output Format</span>
+<span class="type">{
+  "observations": [
+    {"source": "tool_name", "finding": "...", "significance": "high|medium|low"},
+    ...
+  ],
+  "hypothesis_updates": [
+    {"id": 1, "new_likelihood": 0.0-1.0, "evidence": "...", "status": "supported|refuted|inconclusive"},
+    ...
+  ],
+  "correlations": ["..."],
+  "gaps": ["..."],
+  "next_steps": ["..."]
+}</span></pre>
+                        </div>
+                    </div>
+                    
+                    <div class="tips-box">
+                        <div class="tips-title">
+                            <span>💡</span> Observation Best Practices
+                        </div>
+                        <ul class="tips-list">
+                            <li>Require explicit evidence citations—no claims without supporting data</li>
+                            <li>Track hypothesis updates systematically, not just final conclusions</li>
+                            <li>Identify data gaps to inform the next ACT phase</li>
+                            <li>Rate evidence significance to prioritize findings</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- EVALUATE Phase -->
+        <section class="section">
+            <div class="phase-container">
+                <div class="phase-header">
+                    <div class="phase-icon evaluate">📊</div>
+                    <div class="phase-info">
+                        <h3>EVALUATE Phase</h3>
+                        <p>Assess progress, calculate confidence, decide next action</p>
+                    </div>
+                </div>
+                
+                <div class="phase-content">
+                    <div class="phase-section">
+                        <div class="phase-section-title">
+                            <span class="icon">📋</span> Purpose
+                        </div>
+                        <p>
+                            The EVALUATE phase determines whether to continue investigating, generate a 
+                            recommendation, or escalate to another agent or human. This is where 
+                            confidence scoring drives decision-making.
+                        </p>
+                    </div>
+                    
+                    <div class="phase-section">
+                        <div class="phase-section-title">
+                            <span class="icon">📝</span> Prompt Template
+                        </div>
+                        <div class="code-block">
+                            <pre><span class="comment">## EVALUATE Phase Instructions</span>
+
+<span class="keyword">You are now in the EVALUATE phase.</span> Assess your progress.
+
+<span class="variable">### Current State</span>
+- Iteration: {current_iteration} of {max_iterations}
+- Observations: {observations_summary}
+- Hypothesis Status: {hypothesis_status}
+
+<span class="variable">### Confidence Scoring</span>
+Calculate your confidence (0.0 to 1.0) based on:
+- <span class="function">Evidence strength:</span> Quality and quantity of supporting data
+- <span class="function">Hypothesis validation:</span> How well evidence fits hypothesis
+- <span class="function">Alternative elimination:</span> Have other causes been ruled out?
+- <span class="function">Reproducibility:</span> Can the issue be consistently explained?
+
+<span class="variable">### Decision Rules</span>
+<span class="keyword">IF</span> confidence >= <span class="number">0.80</span>:
+  → Generate recommendation and <span class="string">COMPLETE</span>
+  
+<span class="keyword">IF</span> confidence < <span class="number">0.80</span> AND iteration < max_iterations:
+  → Plan additional investigation and <span class="string">CONTINUE</span>
+  
+<span class="keyword">IF</span> confidence < <span class="number">0.60</span> AND issue spans multiple domains:
+  → <span class="string">ESCALATE</span> to appropriate specialist agent
+  
+<span class="keyword">IF</span> iteration >= max_iterations AND confidence < <span class="number">0.80</span>:
+  → <span class="string">ESCALATE</span> to human with findings summary
+
+<span class="variable">### Output Format</span>
+<span class="type">{
+  "confidence": 0.0-1.0,
+  "confidence_breakdown": {
+    "evidence_strength": 0.0-1.0,
+    "hypothesis_validation": 0.0-1.0,
+    "alternative_elimination": 0.0-1.0
+  },
+  "decision": "COMPLETE|CONTINUE|ESCALATE",
+  "recommendation": {...} <span class="comment">// if COMPLETE</span>,
+  "next_investigation": {...} <span class="comment">// if CONTINUE</span>,
+  "escalation_target": "..." <span class="comment">// if ESCALATE</span>,
+  "escalation_reason": "..." <span class="comment">// if ESCALATE</span>
+}</span></pre>
+                        </div>
+                    </div>
+                    
+                    <div class="phase-section">
+                        <div class="phase-section-title">
+                            <span class="icon">🎯</span> Confidence Thresholds
+                        </div>
+                        <div class="output-schema">
+                            <table class="schema-table">
+                                <tr>
+                                    <th>Confidence</th>
+                                    <th>Action</th>
+                                    <th>Description</th>
+                                </tr>
+                                <tr>
+                                    <td>≥ 0.80</td>
+                                    <td><span class="type-badge" style="background: var(--success-color);">COMPLETE</span></td>
+                                    <td>Generate recommendation, publish findings</td>
+                                </tr>
+                                <tr>
+                                    <td>0.60 - 0.79</td>
+                                    <td><span class="type-badge" style="background: var(--warning-color);">CONTINUE</span></td>
+                                    <td>More investigation needed, loop back to THINK</td>
+                                </tr>
+                                <tr>
+                                    <td>< 0.60</td>
+                                    <td><span class="type-badge" style="background: var(--accent-color);">ESCALATE</span></td>
+                                    <td>Hand off to specialist or human</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="warning-box">
+                        <div class="warning-title">
+                            <span>⚠️</span> Preventing Overconfidence
+                        </div>
+                        <p>
+                            Agents tend toward overconfidence. Combat this by:
+                        </p>
+                        <ul class="tips-list" style="margin-top: 15px;">
+                            <li>Requiring confidence breakdown (multiple sub-scores)</li>
+                            <li>Penalizing confidence without cited evidence</li>
+                            <li>Setting conservative thresholds (80% not 70%)</li>
+                            <li>Auditing confidence accuracy over time and recalibrating</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Navigation Footer -->
+        <div class="nav-footer">
+            <a href="haci_prompting_1_foundations.html" class="nav-btn prev">
+                ← Previous: Foundations
+            </a>
+            <a href="haci_prompting_3_agents.html" class="nav-btn next">
+                Next: Agent-Specific Prompts →
+            </a>
+        </div>
+    </div>
+    
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <div class="footer-title">HACI Prompting Framework</div>
+            <p>Structuring agent reasoning through the THINK → ACT → OBSERVE → EVALUATE loop</p>
+        </div>
+    </footer>
+</body>
+</html>

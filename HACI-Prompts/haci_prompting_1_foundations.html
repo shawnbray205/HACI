@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HACI Prompting Framework - Foundations</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --purple-color: #9b59b6;
+            --teal-color: #1abc9c;
+            --bg-light: #ecf0f1;
+            --text-dark: #2c3e50;
+            --text-light: #7f8c8d;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text-dark);
+            background: #ffffff;
+        }
+        
+        /* Page Navigation */
+        .page-nav {
+            background: var(--primary-color);
+            padding: 15px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        .page-nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .page-indicator {
+            color: white;
+            font-size: 0.95em;
+        }
+        
+        .page-indicator strong {
+            color: var(--secondary-color);
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .nav-link {
+            color: white;
+            text-decoration: none;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .nav-link:hover {
+            background: rgba(255,255,255,0.15);
+        }
+        
+        .nav-link.active {
+            background: var(--secondary-color);
+        }
+        
+        .nav-link.next {
+            background: var(--success-color);
+        }
+        
+        .nav-link.next:hover {
+            background: #219a52;
+        }
+        
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: white;
+            padding: 100px 20px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(155, 89, 182, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(52, 152, 219, 0.3) 0%, transparent 50%);
+            opacity: 0.8;
+        }
+        
+        .hero-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .hero h1 {
+            font-size: 3.2em;
+            margin-bottom: 20px;
+            font-weight: 700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .hero .subtitle {
+            font-size: 1.5em;
+            margin-bottom: 15px;
+            opacity: 0.95;
+        }
+        
+        .hero .tagline {
+            font-size: 1.1em;
+            max-width: 900px;
+            margin: 0 auto 30px;
+            opacity: 0.9;
+            line-height: 1.8;
+        }
+        
+        /* Stats Bar */
+        .stats-bar {
+            background: var(--primary-color);
+            padding: 25px 20px;
+        }
+        
+        .stats-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 30px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            color: white;
+        }
+        
+        .stat-value {
+            display: block;
+            font-size: 2em;
+            font-weight: 700;
+            color: var(--secondary-color);
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        /* Main Content */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 60px 20px;
+        }
+        
+        .section {
+            margin-bottom: 80px;
+        }
+        
+        .section-header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        
+        .section-title {
+            font-size: 2.3em;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            position: relative;
+            display: inline-block;
+        }
+        
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 4px;
+            background: linear-gradient(90deg, var(--secondary-color), var(--purple-color));
+            border-radius: 2px;
+        }
+        
+        .section-description {
+            font-size: 1.15em;
+            color: var(--text-light);
+            max-width: 800px;
+            margin: 25px auto 0;
+        }
+        
+        /* Cards */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.12);
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, var(--secondary-color), var(--purple-color));
+            color: white;
+            padding: 25px;
+        }
+        
+        .card-header.green {
+            background: linear-gradient(135deg, var(--success-color), var(--teal-color));
+        }
+        
+        .card-header.orange {
+            background: linear-gradient(135deg, var(--warning-color), var(--accent-color));
+        }
+        
+        .card-header.purple {
+            background: linear-gradient(135deg, var(--purple-color), #8e44ad);
+        }
+        
+        .card-icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        .card-title {
+            font-size: 1.3em;
+            font-weight: 600;
+        }
+        
+        .card-body {
+            padding: 25px;
+        }
+        
+        .card-body p {
+            color: var(--text-light);
+            margin-bottom: 15px;
+        }
+        
+        .card-list {
+            list-style: none;
+        }
+        
+        .card-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .card-list li:last-child {
+            border-bottom: none;
+        }
+        
+        .card-list .icon {
+            color: var(--secondary-color);
+        }
+        
+        /* Callout */
+        .callout {
+            background: linear-gradient(135deg, #ebf5fb 0%, #d4e6f1 100%);
+            border-left: 5px solid var(--secondary-color);
+            border-radius: 12px;
+            padding: 25px 30px;
+            margin: 30px 0;
+        }
+        
+        .callout.warning {
+            background: linear-gradient(135deg, #fef9e7 0%, #fdebd0 100%);
+            border-left-color: var(--warning-color);
+        }
+        
+        .callout.success {
+            background: linear-gradient(135deg, #e8f8f5 0%, #d1f2eb 100%);
+            border-left-color: var(--success-color);
+        }
+        
+        .callout-title {
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.1em;
+        }
+        
+        .callout-content {
+            color: var(--text-dark);
+            line-height: 1.7;
+        }
+        
+        /* Architecture Diagram */
+        .architecture-container {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            margin: 40px 0;
+        }
+        
+        .arch-title {
+            text-align: center;
+            font-size: 1.5em;
+            color: var(--primary-color);
+            margin-bottom: 30px;
+        }
+        
+        /* Context Layers */
+        .prompt-layers {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .prompt-layer {
+            display: flex;
+            align-items: center;
+            padding: 20px;
+            border-radius: 12px;
+            color: white;
+            gap: 20px;
+        }
+        
+        .layer-system { background: linear-gradient(90deg, #e74c3c, #c0392b); }
+        .layer-identity { background: linear-gradient(90deg, #9b59b6, #8e44ad); }
+        .layer-expertise { background: linear-gradient(90deg, #3498db, #2980b9); }
+        .layer-tools { background: linear-gradient(90deg, #1abc9c, #16a085); }
+        .layer-harness { background: linear-gradient(90deg, #f39c12, #e67e22); }
+        .layer-mode { background: linear-gradient(90deg, #2c3e50, #34495e); }
+        
+        .layer-label {
+            font-size: 0.85em;
+            opacity: 0.9;
+        }
+        
+        .layer-name {
+            font-weight: 700;
+            font-size: 1.2em;
+        }
+        
+        .layer-content {
+            flex: 1;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .layer-item {
+            background: rgba(255,255,255,0.2);
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.85em;
+        }
+        
+        .layer-size {
+            font-size: 0.9em;
+            opacity: 0.9;
+            white-space: nowrap;
+        }
+        
+        /* Code Block */
+        .code-block {
+            background: #1e1e1e;
+            border-radius: 12px;
+            padding: 25px;
+            overflow-x: auto;
+            margin: 20px 0;
+        }
+        
+        .code-block pre {
+            color: #d4d4d4;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.9em;
+            line-height: 1.6;
+            margin: 0;
+        }
+        
+        .code-block .comment { color: #6a9955; }
+        .code-block .keyword { color: #569cd6; }
+        .code-block .string { color: #ce9178; }
+        .code-block .variable { color: #9cdcfe; }
+        .code-block .function { color: #dcdcaa; }
+        .code-block .type { color: #4ec9b0; }
+        
+        /* Principles Grid */
+        .principles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-top: 30px;
+        }
+        
+        .principle-card {
+            background: var(--bg-light);
+            border-radius: 12px;
+            padding: 25px;
+            border-left: 4px solid var(--secondary-color);
+        }
+        
+        .principle-number {
+            display: inline-block;
+            background: var(--secondary-color);
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+        
+        .principle-title {
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+        
+        .principle-text {
+            color: var(--text-light);
+            font-size: 0.95em;
+        }
+        
+        /* Quote */
+        .quote-block {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16px;
+            padding: 40px;
+            color: white;
+            text-align: center;
+            margin: 40px 0;
+        }
+        
+        .quote-text {
+            font-size: 1.4em;
+            font-style: italic;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+        
+        .quote-author {
+            font-size: 1em;
+            opacity: 0.9;
+        }
+        
+        /* Navigation Footer */
+        .nav-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 30px 0;
+            border-top: 1px solid #eee;
+            margin-top: 60px;
+        }
+        
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px 30px;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-btn.prev {
+            background: var(--bg-light);
+            color: var(--text-dark);
+        }
+        
+        .nav-btn.prev:hover {
+            background: #ddd;
+        }
+        
+        .nav-btn.next {
+            background: var(--success-color);
+            color: white;
+        }
+        
+        .nav-btn.next:hover {
+            background: #219a52;
+        }
+        
+        /* Footer */
+        footer {
+            background: var(--primary-color);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .footer-title {
+            font-size: 1.3em;
+            margin-bottom: 10px;
+        }
+        
+        .footer-stats {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .footer-stat {
+            text-align: center;
+        }
+        
+        .footer-stat-value {
+            font-size: 1.5em;
+            font-weight: 700;
+            color: var(--secondary-color);
+        }
+        
+        .footer-stat-label {
+            font-size: 0.85em;
+            opacity: 0.8;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2em;
+            }
+            
+            .stats-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .page-nav-container {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .cards-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .prompt-layer {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Page Navigation -->
+    <nav class="page-nav">
+        <div class="page-nav-container">
+            <div class="page-indicator">
+                HACI Prompting Framework | <strong>Page 1 of 4</strong> — Foundations
+            </div>
+            <div class="nav-links">
+                <a href="#" class="nav-link active">1. Foundations</a>
+                <a href="haci_prompting_2_harness.html" class="nav-link">2. Harness Prompts</a>
+                <a href="haci_prompting_3_agents.html" class="nav-link">3. Agent Prompts</a>
+                <a href="haci_prompting_4_mcp.html" class="nav-link next">4. MCP Prompts →</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="hero">
+        <div class="hero-content">
+            <h1>📝 HACI Prompting Framework</h1>
+            <div class="subtitle">The Art of Instructing Multi-Agent Systems</div>
+            <p class="tagline">
+                Master the techniques for crafting effective prompts that guide HACI's specialized agents 
+                through complex investigations with clarity, precision, and consistent behavior.
+            </p>
+        </div>
+    </div>
+    
+    <!-- Stats Bar -->
+    <div class="stats-bar">
+        <div class="stats-container">
+            <div class="stat-item">
+                <span class="stat-value">10</span>
+                <span class="stat-label">Specialized Agents</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value">5-15K</span>
+                <span class="stat-label">System Prompt Tokens</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value">4</span>
+                <span class="stat-label">Execution Modes</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value">80%+</span>
+                <span class="stat-label">Target Confidence</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="container">
+        
+        <!-- Introduction Section -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">Why Prompting Matters in HACI</h2>
+                <p class="section-description">
+                    In agentic systems, prompts aren't just input—they're the constitution that governs agent behavior, 
+                    defines expertise boundaries, and ensures safe, predictable operation across execution modes.
+                </p>
+            </div>
+            
+            <div class="quote-block">
+                <div class="quote-text">
+                    "A well-crafted system prompt is the difference between an agent that hallucinates freely 
+                    and one that stays within its domain, escalates appropriately, and earns human trust."
+                </div>
+                <div class="quote-author">— HACI Design Philosophy</div>
+            </div>
+            
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon">🎯</div>
+                        <div class="card-title">Agent Identity & Boundaries</div>
+                    </div>
+                    <div class="card-body">
+                        <p>System prompts establish each agent's identity, domain expertise, and operational limits. This prevents agents from overstepping their competence.</p>
+                        <ul class="card-list">
+                            <li><span class="icon">→</span> Define agent role and expertise area</li>
+                            <li><span class="icon">→</span> Establish what agent should NOT do</li>
+                            <li><span class="icon">→</span> Set escalation thresholds</li>
+                            <li><span class="icon">→</span> Specify confidence requirements</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header green">
+                        <div class="card-icon">🔄</div>
+                        <div class="card-title">Harness Loop Guidance</div>
+                    </div>
+                    <div class="card-body">
+                        <p>Each phase of the THINK → ACT → OBSERVE → EVALUATE loop has specific prompting requirements to ensure structured reasoning.</p>
+                        <ul class="card-list">
+                            <li><span class="icon">→</span> Phase-specific instructions</li>
+                            <li><span class="icon">→</span> Output format requirements</li>
+                            <li><span class="icon">→</span> Iteration limits and guards</li>
+                            <li><span class="icon">→</span> Confidence scoring guidance</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header orange">
+                        <div class="card-icon">🛡️</div>
+                        <div class="card-title">Governance & Safety</div>
+                    </div>
+                    <div class="card-body">
+                        <p>Prompts embed governance controls directly into agent behavior, ensuring compliance with human oversight requirements.</p>
+                        <ul class="card-list">
+                            <li><span class="icon">→</span> Human approval triggers</li>
+                            <li><span class="icon">→</span> Mode-specific constraints</li>
+                            <li><span class="icon">→</span> Audit trail requirements</li>
+                            <li><span class="icon">→</span> Explainability mandates</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- System Prompt Architecture -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">System Prompt Architecture</h2>
+                <p class="section-description">
+                    HACI system prompts follow a structured architecture with six distinct sections, 
+                    each serving a specific purpose in guiding agent behavior.
+                </p>
+            </div>
+            
+            <div class="architecture-container">
+                <h3 class="arch-title">Six-Layer System Prompt Structure</h3>
+                <div class="prompt-layers">
+                    <div class="prompt-layer layer-system">
+                        <div>
+                            <div class="layer-label">Section 1</div>
+                            <div class="layer-name">Core Identity</div>
+                        </div>
+                        <div class="layer-content">
+                            <span class="layer-item">Agent Name</span>
+                            <span class="layer-item">Role Definition</span>
+                            <span class="layer-item">Mission Statement</span>
+                        </div>
+                        <span class="layer-size">~200 tokens</span>
+                    </div>
+                    
+                    <div class="prompt-layer layer-identity">
+                        <div>
+                            <div class="layer-label">Section 2</div>
+                            <div class="layer-name">Domain Expertise</div>
+                        </div>
+                        <div class="layer-content">
+                            <span class="layer-item">Knowledge Areas</span>
+                            <span class="layer-item">Technical Skills</span>
+                            <span class="layer-item">Investigation Methods</span>
+                        </div>
+                        <span class="layer-size">~500 tokens</span>
+                    </div>
+                    
+                    <div class="prompt-layer layer-expertise">
+                        <div>
+                            <div class="layer-label">Section 3</div>
+                            <div class="layer-name">Tool Definitions</div>
+                        </div>
+                        <div class="layer-content">
+                            <span class="layer-item">Available Tools</span>
+                            <span class="layer-item">Tool Schemas</span>
+                            <span class="layer-item">Usage Guidelines</span>
+                        </div>
+                        <span class="layer-size">~2-5K tokens</span>
+                    </div>
+                    
+                    <div class="prompt-layer layer-tools">
+                        <div>
+                            <div class="layer-label">Section 4</div>
+                            <div class="layer-name">Harness Instructions</div>
+                        </div>
+                        <div class="layer-content">
+                            <span class="layer-item">THINK Phase</span>
+                            <span class="layer-item">ACT Phase</span>
+                            <span class="layer-item">OBSERVE Phase</span>
+                            <span class="layer-item">EVALUATE Phase</span>
+                        </div>
+                        <span class="layer-size">~1-2K tokens</span>
+                    </div>
+                    
+                    <div class="prompt-layer layer-harness">
+                        <div>
+                            <div class="layer-label">Section 5</div>
+                            <div class="layer-name">Mode Constraints</div>
+                        </div>
+                        <div class="layer-content">
+                            <span class="layer-item">Autonomy Level</span>
+                            <span class="layer-item">Approval Gates</span>
+                            <span class="layer-item">Escalation Rules</span>
+                        </div>
+                        <span class="layer-size">~500 tokens</span>
+                    </div>
+                    
+                    <div class="prompt-layer layer-mode">
+                        <div>
+                            <div class="layer-label">Section 6</div>
+                            <div class="layer-name">Output Formats</div>
+                        </div>
+                        <div class="layer-content">
+                            <span class="layer-item">Finding Schema</span>
+                            <span class="layer-item">Evidence Format</span>
+                            <span class="layer-item">Confidence Reporting</span>
+                        </div>
+                        <span class="layer-size">~500 tokens</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="callout success">
+                <div class="callout-title">
+                    <span>💡</span>
+                    Token Budget Consideration
+                </div>
+                <div class="callout-content">
+                    The system prompt typically consumes 5-15K tokens depending on tool complexity. 
+                    With a 200K context window, this leaves ample room for working memory, tool outputs, 
+                    and chain-of-thought reasoning. HACI uses MCP to reduce tool definition tokens by 98.7%.
+                </div>
+            </div>
+        </section>
+        
+        <!-- Core Principles Section -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">Core Prompting Principles</h2>
+                <p class="section-description">
+                    These principles guide the design of all HACI prompts, ensuring consistency, 
+                    reliability, and predictable agent behavior.
+                </p>
+            </div>
+            
+            <div class="principles-grid">
+                <div class="principle-card">
+                    <div class="principle-number">1</div>
+                    <div class="principle-title">Explicit Over Implicit</div>
+                    <div class="principle-text">Never assume the model will infer behavior. State expectations explicitly, including what the agent should NOT do.</div>
+                </div>
+                
+                <div class="principle-card" style="border-left-color: var(--success-color);">
+                    <div class="principle-number" style="background: var(--success-color);">2</div>
+                    <div class="principle-title">Structured Output</div>
+                    <div class="principle-text">Always define output schemas using JSON or structured formats. This enables programmatic parsing and validation.</div>
+                </div>
+                
+                <div class="principle-card" style="border-left-color: var(--purple-color);">
+                    <div class="principle-number" style="background: var(--purple-color);">3</div>
+                    <div class="principle-title">Confidence Calibration</div>
+                    <div class="principle-text">Teach agents to self-assess confidence accurately. Overconfidence leads to unsafe actions; underconfidence to unnecessary escalation.</div>
+                </div>
+                
+                <div class="principle-card" style="border-left-color: var(--warning-color);">
+                    <div class="principle-number" style="background: var(--warning-color);">4</div>
+                    <div class="principle-title">Bounded Iteration</div>
+                    <div class="principle-text">Set explicit iteration limits. Without bounds, agents may loop indefinitely or consume excessive resources.</div>
+                </div>
+                
+                <div class="principle-card" style="border-left-color: var(--teal-color);">
+                    <div class="principle-number" style="background: var(--teal-color);">5</div>
+                    <div class="principle-title">Evidence-Based Claims</div>
+                    <div class="principle-text">Require agents to cite tool outputs for every claim. No unsupported assertions—everything must trace to evidence.</div>
+                </div>
+                
+                <div class="principle-card" style="border-left-color: var(--accent-color);">
+                    <div class="principle-number" style="background: var(--accent-color);">6</div>
+                    <div class="principle-title">Graceful Degradation</div>
+                    <div class="principle-text">Define fallback behavior when tools fail or results are ambiguous. Agents should never crash silently.</div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Example System Prompt -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">Example: Core Identity Section</h2>
+                <p class="section-description">
+                    A practical example showing how the Core Identity section establishes 
+                    an agent's role, boundaries, and fundamental operating principles.
+                </p>
+            </div>
+            
+            <div class="code-block">
+                <pre><span class="comment"># HACI Log Analysis Agent - Core Identity</span>
+
+<span class="keyword">You are</span> the <span class="string">Log Analysis Agent</span>, a specialized investigator in the 
+HACI (Harness-Enhanced Agentic Collaborative Intelligence) system.
+
+<span class="keyword">## Your Role</span>
+You analyze application logs, system logs, and error traces to identify 
+patterns, anomalies, and root causes of technical issues. You are an 
+expert at parsing structured and unstructured log data.
+
+<span class="keyword">## Your Mission</span>
+Investigate the logs relevant to each ticket, identify error patterns, 
+correlate timestamps with reported issues, and produce findings that 
+help resolve the problem.
+
+<span class="keyword">## Your Boundaries</span>
+- <span class="variable">DO:</span> Analyze logs, identify patterns, correlate timestamps
+- <span class="variable">DO:</span> Search for error messages, stack traces, anomalies
+- <span class="variable">DO:</span> Calculate confidence based on evidence quality
+- <span class="variable">DO NOT:</span> Make code changes or deploy fixes
+- <span class="variable">DO NOT:</span> Access production databases directly
+- <span class="variable">DO NOT:</span> Claim certainty without supporting evidence
+
+<span class="keyword">## Escalation Triggers</span>
+Escalate to another agent or human when:
+- Confidence remains below <span class="string">60%</span> after <span class="string">3 iterations</span>
+- Issue appears to span multiple domains (code + infrastructure)
+- Security-sensitive patterns are detected
+- You encounter logs you cannot parse or access</pre>
+            </div>
+            
+            <div class="callout warning">
+                <div class="callout-title">
+                    <span>⚠️</span>
+                    Common Pitfall: Vague Boundaries
+                </div>
+                <div class="callout-content">
+                    A prompt that says "help with technical issues" is too vague. Agents need explicit 
+                    boundaries like "analyze logs" vs "don't modify code." Without clear DO/DO NOT 
+                    statements, agents may overstep their domain or fail to take necessary actions.
+                </div>
+            </div>
+        </section>
+        
+        <!-- Navigation Footer -->
+        <div class="nav-footer">
+            <div></div>
+            <a href="haci_prompting_2_harness.html" class="nav-btn next">
+                Next: Harness Phase Prompts →
+            </a>
+        </div>
+    </div>
+    
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <div class="footer-title">HACI Prompting Framework</div>
+            <p>Comprehensive guide to crafting effective prompts for multi-agent systems</p>
+            <div class="footer-stats">
+                <div class="footer-stat">
+                    <div class="footer-stat-value">4</div>
+                    <div class="footer-stat-label">Pages</div>
+                </div>
+                <div class="footer-stat">
+                    <div class="footer-stat-value">10</div>
+                    <div class="footer-stat-label">Agent Types</div>
+                </div>
+                <div class="footer-stat">
+                    <div class="footer-stat-value">15+</div>
+                    <div class="footer-stat-label">Prompt Templates</div>
+                </div>
+                <div class="footer-stat">
+                    <div class="footer-stat-value">MCP</div>
+                    <div class="footer-stat-label">Integration</div>
+                </div>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

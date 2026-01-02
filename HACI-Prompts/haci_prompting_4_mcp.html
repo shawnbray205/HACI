@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HACI Prompting Framework - MCP Prompts</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --purple-color: #9b59b6;
+            --teal-color: #1abc9c;
+            --bg-light: #ecf0f1;
+            --text-dark: #2c3e50;
+            --text-light: #7f8c8d;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text-dark);
+            background: #ffffff;
+        }
+        
+        /* Page Navigation */
+        .page-nav {
+            background: var(--primary-color);
+            padding: 15px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        .page-nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .page-indicator {
+            color: white;
+            font-size: 0.95em;
+        }
+        
+        .page-indicator strong {
+            color: var(--secondary-color);
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .nav-link {
+            color: white;
+            text-decoration: none;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-link:hover {
+            background: rgba(255,255,255,0.15);
+        }
+        
+        .nav-link.active {
+            background: var(--secondary-color);
+        }
+        
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: white;
+            padding: 80px 20px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 30% 70%, rgba(26, 188, 156, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 70% 30%, rgba(155, 89, 182, 0.3) 0%, transparent 50%);
+        }
+        
+        .hero-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .hero h1 {
+            font-size: 2.8em;
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+        
+        .hero .subtitle {
+            font-size: 1.3em;
+            opacity: 0.95;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        
+        /* Main Content */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 60px 20px;
+        }
+        
+        .section {
+            margin-bottom: 80px;
+        }
+        
+        .section-header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        
+        .section-title {
+            font-size: 2.3em;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            position: relative;
+            display: inline-block;
+        }
+        
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 4px;
+            background: linear-gradient(90deg, var(--teal-color), var(--purple-color));
+            border-radius: 2px;
+        }
+        
+        .section-description {
+            font-size: 1.15em;
+            color: var(--text-light);
+            max-width: 800px;
+            margin: 25px auto 0;
+        }
+        
+        /* Primitives Grid */
+        .primitives-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            margin: 40px 0;
+        }
+        
+        .primitive-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+            overflow: hidden;
+            transition: transform 0.3s ease;
+        }
+        
+        .primitive-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .primitive-card.highlight {
+            border: 3px solid var(--teal-color);
+        }
+        
+        .primitive-header {
+            padding: 25px;
+            color: white;
+        }
+        
+        .primitive-header.tools { background: linear-gradient(135deg, #3498db, #2980b9); }
+        .primitive-header.resources { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
+        .primitive-header.prompts { background: linear-gradient(135deg, #1abc9c, #16a085); }
+        
+        .primitive-icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        .primitive-title {
+            font-size: 1.3em;
+            font-weight: 600;
+        }
+        
+        .primitive-body {
+            padding: 25px;
+        }
+        
+        .primitive-body p {
+            color: var(--text-light);
+            margin-bottom: 15px;
+        }
+        
+        /* Code Block */
+        .code-block {
+            background: #1e1e1e;
+            border-radius: 12px;
+            padding: 25px;
+            overflow-x: auto;
+            margin: 20px 0;
+        }
+        
+        .code-block pre {
+            color: #d4d4d4;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.85em;
+            line-height: 1.6;
+            margin: 0;
+        }
+        
+        .code-block .comment { color: #6a9955; }
+        .code-block .keyword { color: #569cd6; }
+        .code-block .string { color: #ce9178; }
+        .code-block .variable { color: #9cdcfe; }
+        .code-block .function { color: #dcdcaa; }
+        .code-block .type { color: #4ec9b0; }
+        .code-block .number { color: #b5cea8; }
+        
+        /* Callout */
+        .callout {
+            background: linear-gradient(135deg, #e8f8f5 0%, #d1f2eb 100%);
+            border-left: 5px solid var(--teal-color);
+            border-radius: 12px;
+            padding: 25px 30px;
+            margin: 30px 0;
+        }
+        
+        .callout.info {
+            background: linear-gradient(135deg, #ebf5fb 0%, #d4e6f1 100%);
+            border-left-color: var(--secondary-color);
+        }
+        
+        .callout.warning {
+            background: linear-gradient(135deg, #fef9e7 0%, #fdebd0 100%);
+            border-left-color: var(--warning-color);
+        }
+        
+        .callout-title {
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        /* Example Container */
+        .example-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin: 30px 0;
+        }
+        
+        .example-header {
+            background: linear-gradient(135deg, var(--primary-color), #34495e);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .example-icon {
+            font-size: 1.5em;
+        }
+        
+        .example-title {
+            font-size: 1.2em;
+            font-weight: 600;
+        }
+        
+        .example-body {
+            padding: 30px;
+        }
+        
+        /* Benefits Grid */
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            margin-top: 30px;
+        }
+        
+        .benefit-card {
+            background: var(--bg-light);
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+        }
+        
+        .benefit-icon {
+            font-size: 2.5em;
+            margin-bottom: 15px;
+        }
+        
+        .benefit-title {
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+        
+        .benefit-text {
+            color: var(--text-light);
+            font-size: 0.95em;
+        }
+        
+        /* Comparison Table */
+        .comparison-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin: 30px 0;
+        }
+        
+        .comparison-header {
+            background: var(--primary-color);
+            color: white;
+            padding: 20px 30px;
+            font-size: 1.2em;
+            font-weight: 600;
+        }
+        
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .comparison-table th,
+        .comparison-table td {
+            padding: 15px 20px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .comparison-table th {
+            background: var(--bg-light);
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+        
+        .comparison-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 10px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        
+        .badge.static { background: #fadbd8; color: #c0392b; }
+        .badge.dynamic { background: #d5f5e3; color: #27ae60; }
+        .badge.both { background: #d4e6f1; color: #2980b9; }
+        
+        /* Server Examples */
+        .server-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-top: 30px;
+        }
+        
+        .server-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+        
+        .server-header {
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .server-logo {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+        }
+        
+        .server-logo.github { background: #24292e; color: white; }
+        .server-logo.jira { background: #0052cc; color: white; }
+        .server-logo.datadog { background: #632ca6; color: white; }
+        
+        .server-name {
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+        
+        .server-body {
+            padding: 20px;
+        }
+        
+        .prompt-count {
+            display: inline-block;
+            background: var(--teal-color);
+            color: white;
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            margin-bottom: 15px;
+        }
+        
+        /* Navigation Footer */
+        .nav-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 30px 0;
+            border-top: 1px solid #eee;
+            margin-top: 60px;
+        }
+        
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px 30px;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-btn.prev {
+            background: var(--bg-light);
+            color: var(--text-dark);
+        }
+        
+        .nav-btn.prev:hover {
+            background: #ddd;
+        }
+        
+        .nav-btn.complete {
+            background: var(--success-color);
+            color: white;
+        }
+        
+        .nav-btn.complete:hover {
+            background: #219a52;
+        }
+        
+        /* Footer */
+        footer {
+            background: var(--primary-color);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .footer-title {
+            font-size: 1.3em;
+            margin-bottom: 10px;
+        }
+        
+        .footer-stats {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .footer-stat {
+            text-align: center;
+        }
+        
+        .footer-stat-value {
+            font-size: 1.5em;
+            font-weight: 700;
+            color: var(--teal-color);
+        }
+        
+        .footer-stat-label {
+            font-size: 0.85em;
+            opacity: 0.8;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2em;
+            }
+            
+            .primitives-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .page-nav-container {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Page Navigation -->
+    <nav class="page-nav">
+        <div class="page-nav-container">
+            <div class="page-indicator">
+                HACI Prompting Framework | <strong>Page 4 of 4</strong> — MCP Prompts
+            </div>
+            <div class="nav-links">
+                <a href="haci_prompting_1_foundations.html" class="nav-link">1. Foundations</a>
+                <a href="haci_prompting_2_harness.html" class="nav-link">2. Harness Prompts</a>
+                <a href="haci_prompting_3_agents.html" class="nav-link">3. Agent Prompts</a>
+                <a href="#" class="nav-link active">4. MCP Prompts</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="hero">
+        <div class="hero-content">
+            <h1>🔌 MCP Prompts</h1>
+            <div class="subtitle">
+                The third primitive of Model Context Protocol—dynamic instruction templates from servers
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="container">
+        
+        <!-- MCP Primitives Overview -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">The Three MCP Primitives</h2>
+                <p class="section-description">
+                    Model Context Protocol exposes three primitives from servers to clients. 
+                    Prompts are often overlooked but provide powerful instruction templating capabilities.
+                </p>
+            </div>
+            
+            <div class="primitives-grid">
+                <div class="primitive-card">
+                    <div class="primitive-header tools">
+                        <div class="primitive-icon">🔧</div>
+                        <div class="primitive-title">Tools</div>
+                    </div>
+                    <div class="primitive-body">
+                        <p>Executable functions that agents can invoke. The most commonly used MCP primitive.</p>
+                        <ul style="margin-left: 20px; color: var(--text-light);">
+                            <li>Execute queries</li>
+                            <li>Modify resources</li>
+                            <li>Trigger actions</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="primitive-card">
+                    <div class="primitive-header resources">
+                        <div class="primitive-icon">📁</div>
+                        <div class="primitive-title">Resources</div>
+                    </div>
+                    <div class="primitive-body">
+                        <p>Structured data sources accessible via URI patterns. Provide context to agents.</p>
+                        <ul style="margin-left: 20px; color: var(--text-light);">
+                            <li>Configuration data</li>
+                            <li>Documentation</li>
+                            <li>System state</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="primitive-card highlight">
+                    <div class="primitive-header prompts">
+                        <div class="primitive-icon">📝</div>
+                        <div class="primitive-title">Prompts</div>
+                    </div>
+                    <div class="primitive-body">
+                        <p>Instruction templates with arguments. Enable servers to guide agent behavior dynamically.</p>
+                        <ul style="margin-left: 20px; color: var(--text-light);">
+                            <li>Analysis templates</li>
+                            <li>Investigation patterns</li>
+                            <li>Best practice guidance</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="callout">
+                <div class="callout-title">
+                    <span>💡</span> Why MCP Prompts Matter for HACI
+                </div>
+                <div class="callout-content">
+                    MCP Prompts allow external systems to contribute specialized instructions to HACI agents. 
+                    Instead of hardcoding all investigation patterns, servers like GitHub, Jira, or Datadog 
+                    can expose domain-specific prompts that agents retrieve dynamically. This enables 
+                    <strong>vendor-specific best practices</strong> without modifying HACI's core code.
+                </div>
+            </div>
+        </section>
+        
+        <!-- Prompt Structure -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">MCP Prompt Structure</h2>
+                <p class="section-description">
+                    Understanding how MCP servers define and expose prompt templates.
+                </p>
+            </div>
+            
+            <div class="code-block">
+                <pre><span class="comment"># MCP Prompt Definition Schema</span>
+
+<span class="type">{
+  "name":</span> <span class="string">"analyze_pr"</span>,
+  <span class="type">"description":</span> <span class="string">"Template for analyzing a GitHub pull request"</span>,
+  <span class="type">"arguments":</span> [
+    {
+      <span class="variable">"name":</span> <span class="string">"pr_number"</span>,
+      <span class="variable">"description":</span> <span class="string">"Pull request number to analyze"</span>,
+      <span class="variable">"required":</span> <span class="keyword">true</span>
+    },
+    {
+      <span class="variable">"name":</span> <span class="string">"focus_areas"</span>,
+      <span class="variable">"description":</span> <span class="string">"Specific areas to focus on (security, performance, etc.)"</span>,
+      <span class="variable">"required":</span> <span class="keyword">false</span>
+    },
+    {
+      <span class="variable">"name":</span> <span class="string">"context"</span>,
+      <span class="variable">"description":</span> <span class="string">"Additional context about the review"</span>,
+      <span class="variable">"required":</span> <span class="keyword">false</span>
+    }
+  ]
+}</pre>
+            </div>
+            
+            <div class="example-container">
+                <div class="example-header">
+                    <div class="example-icon">📋</div>
+                    <div class="example-title">Example: GitHub MCP Server Prompt</div>
+                </div>
+                <div class="example-body">
+                    <p style="margin-bottom: 20px;">When an agent retrieves this prompt with arguments, the server returns a fully-formed instruction template:</p>
+                    
+                    <div class="code-block">
+                        <pre><span class="comment"># Request from HACI Agent</span>
+<span class="function">prompts/get</span> {
+  <span class="variable">"name":</span> <span class="string">"analyze_pr"</span>,
+  <span class="variable">"arguments":</span> {
+    <span class="string">"pr_number":</span> <span class="number">1234</span>,
+    <span class="string">"focus_areas":</span> <span class="string">"security, error handling"</span>
+  }
+}
+
+<span class="comment"># Response from GitHub MCP Server</span>
+{
+  <span class="type">"messages":</span> [
+    {
+      <span class="variable">"role":</span> <span class="string">"user"</span>,
+      <span class="variable">"content":</span> <span class="string">"Analyze Pull Request #1234 with focus on security and error handling.
+
+## PR Details
+- Title: Fix payment validation bug
+- Author: @dev-alice
+- Files Changed: 12
+- Lines Added: 245
+- Lines Removed: 89
+
+## Review Guidelines
+1. Check for input validation vulnerabilities
+2. Verify error handling is comprehensive
+3. Look for potential race conditions
+4. Review authentication/authorization changes
+5. Check for hardcoded secrets or credentials
+
+## Focus Areas (User-Specified)
+- security
+- error handling
+
+Provide your analysis with severity ratings for any issues found."</span>
+    }
+  ]
+}</pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Static vs Dynamic -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">Static vs Dynamic Prompts</h2>
+                <p class="section-description">
+                    Understanding when to use hardcoded HACI prompts versus MCP-provided prompts.
+                </p>
+            </div>
+            
+            <div class="comparison-container">
+                <div class="comparison-header">Prompt Strategy Comparison</div>
+                <table class="comparison-table">
+                    <tr>
+                        <th>Aspect</th>
+                        <th>Static (HACI System Prompts)</th>
+                        <th>Dynamic (MCP Prompts)</th>
+                    </tr>
+                    <tr>
+                        <td>Location</td>
+                        <td>Hardcoded in agent configuration</td>
+                        <td>Retrieved from MCP servers at runtime</td>
+                    </tr>
+                    <tr>
+                        <td>Update Cycle</td>
+                        <td><span class="badge static">Deployment Required</span></td>
+                        <td><span class="badge dynamic">Instant Updates</span></td>
+                    </tr>
+                    <tr>
+                        <td>Customization</td>
+                        <td>Per-organization customization</td>
+                        <td>Per-vendor/tool specialization</td>
+                    </tr>
+                    <tr>
+                        <td>Best For</td>
+                        <td>Core agent identity, harness instructions</td>
+                        <td>Vendor-specific patterns, external best practices</td>
+                    </tr>
+                    <tr>
+                        <td>Token Cost</td>
+                        <td>Always loaded</td>
+                        <td>Loaded on-demand</td>
+                    </tr>
+                    <tr>
+                        <td>Reliability</td>
+                        <td>Always available</td>
+                        <td>Depends on server availability</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="callout info">
+                <div class="callout-title">
+                    <span>🔄</span> HACI's Hybrid Approach
+                </div>
+                <div class="callout-content">
+                    HACI uses <strong>static prompts</strong> for core agent identity, harness instructions, and 
+                    governance controls. <strong>MCP prompts</strong> supplement with vendor-specific investigation 
+                    patterns. If an MCP server is unavailable, agents fall back to generic investigation patterns.
+                </div>
+            </div>
+        </section>
+        
+        <!-- MCP Server Examples -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">MCP Server Prompt Examples</h2>
+                <p class="section-description">
+                    Real-world examples of prompts exposed by common MCP servers in the HACI ecosystem.
+                </p>
+            </div>
+            
+            <div class="server-grid">
+                <div class="server-card">
+                    <div class="server-header">
+                        <div class="server-logo github">🐙</div>
+                        <div class="server-name">GitHub MCP Server</div>
+                    </div>
+                    <div class="server-body">
+                        <span class="prompt-count">5 Prompts Available</span>
+                        <div class="code-block" style="margin-top: 15px;">
+                            <pre><span class="function">analyze_pr</span>
+<span class="comment">→ PR review with security focus</span>
+
+<span class="function">investigate_commit</span>
+<span class="comment">→ Deep-dive into commit changes</span>
+
+<span class="function">code_search_strategy</span>
+<span class="comment">→ Effective code search patterns</span>
+
+<span class="function">blame_investigation</span>
+<span class="comment">→ Track down change origins</span>
+
+<span class="function">dependency_review</span>
+<span class="comment">→ Dependency update analysis</span></pre>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="server-card">
+                    <div class="server-header">
+                        <div class="server-logo jira">📋</div>
+                        <div class="server-name">Jira MCP Server</div>
+                    </div>
+                    <div class="server-body">
+                        <span class="prompt-count">4 Prompts Available</span>
+                        <div class="code-block" style="margin-top: 15px;">
+                            <pre><span class="function">ticket_analysis</span>
+<span class="comment">→ Parse and understand ticket context</span>
+
+<span class="function">related_issues</span>
+<span class="comment">→ Find similar past issues</span>
+
+<span class="function">escalation_check</span>
+<span class="comment">→ Determine escalation needs</span>
+
+<span class="function">update_format</span>
+<span class="comment">→ Standard update formatting</span></pre>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="server-card">
+                    <div class="server-header">
+                        <div class="server-logo datadog">📊</div>
+                        <div class="server-name">Datadog MCP Server</div>
+                    </div>
+                    <div class="server-body">
+                        <span class="prompt-count">6 Prompts Available</span>
+                        <div class="code-block" style="margin-top: 15px;">
+                            <pre><span class="function">metric_investigation</span>
+<span class="comment">→ Analyze metric anomalies</span>
+
+<span class="function">log_correlation</span>
+<span class="comment">→ Correlate logs with metrics</span>
+
+<span class="function">apm_trace_analysis</span>
+<span class="comment">→ Deep trace investigation</span>
+
+<span class="function">alert_context</span>
+<span class="comment">→ Understand alert triggers</span>
+
+<span class="function">baseline_comparison</span>
+<span class="comment">→ Compare against baselines</span>
+
+<span class="function">dashboard_summary</span>
+<span class="comment">→ Summarize dashboard state</span></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Implementing MCP Prompts -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">Implementing MCP Prompts in HACI</h2>
+                <p class="section-description">
+                    How HACI agents discover, retrieve, and apply MCP prompts during investigations.
+                </p>
+            </div>
+            
+            <div class="code-block">
+                <pre><span class="comment"># haci/agents/mcp_prompt_integration.py</span>
+
+<span class="keyword">class</span> <span class="type">MCPPromptIntegration</span>:
+    <span class="string">"""
+    Integrates MCP prompts into agent investigations
+    """</span>
+    
+    <span class="keyword">async def</span> <span class="function">get_investigation_prompt</span>(
+        <span class="variable">self</span>,
+        <span class="variable">server_name</span>: str,
+        <span class="variable">prompt_name</span>: str,
+        <span class="variable">arguments</span>: Dict[str, Any]
+    ) -> Optional[str]:
+        <span class="string">"""
+        Retrieve an investigation prompt from an MCP server
+        
+        Args:
+            server_name: Name of the MCP server (e.g., "github")
+            prompt_name: Name of the prompt template
+            arguments: Arguments to fill the template
+            
+        Returns:
+            Filled prompt template or None if unavailable
+        """</span>
+        <span class="keyword">try</span>:
+            <span class="comment"># Get MCP client for this server</span>
+            client = <span class="variable">self</span>.mcp_manager.get_client(server_name)
+            
+            <span class="comment"># Retrieve prompt with arguments</span>
+            response = <span class="keyword">await</span> client.prompts.get(
+                name=prompt_name,
+                arguments=arguments
+            )
+            
+            <span class="comment"># Extract the prompt content</span>
+            <span class="keyword">if</span> response.messages:
+                <span class="keyword">return</span> response.messages[<span class="number">0</span>].content
+            
+        <span class="keyword">except</span> MCPServerUnavailable:
+            <span class="comment"># Fall back to generic pattern</span>
+            logger.warning(f<span class="string">"MCP server {server_name} unavailable, using fallback"</span>)
+            <span class="keyword">return</span> <span class="variable">self</span>._get_fallback_prompt(prompt_name)
+        
+        <span class="keyword">return</span> <span class="keyword">None</span>
+    
+    <span class="keyword">async def</span> <span class="function">enrich_think_phase</span>(
+        <span class="variable">self</span>,
+        <span class="variable">base_prompt</span>: str,
+        <span class="variable">ticket_context</span>: Dict
+    ) -> str:
+        <span class="string">"""
+        Enrich THINK phase with relevant MCP prompts
+        """</span>
+        enrichments = []
+        
+        <span class="comment"># If ticket mentions GitHub PR, get PR analysis prompt</span>
+        <span class="keyword">if</span> <span class="string">"pr_number"</span> <span class="keyword">in</span> ticket_context:
+            pr_prompt = <span class="keyword">await</span> <span class="variable">self</span>.get_investigation_prompt(
+                server_name=<span class="string">"github"</span>,
+                prompt_name=<span class="string">"analyze_pr"</span>,
+                arguments={<span class="string">"pr_number"</span>: ticket_context[<span class="string">"pr_number"</span>]}
+            )
+            <span class="keyword">if</span> pr_prompt:
+                enrichments.append(pr_prompt)
+        
+        <span class="comment"># If ticket has Datadog alert, get metric investigation prompt</span>
+        <span class="keyword">if</span> <span class="string">"alert_id"</span> <span class="keyword">in</span> ticket_context:
+            metric_prompt = <span class="keyword">await</span> <span class="variable">self</span>.get_investigation_prompt(
+                server_name=<span class="string">"datadog"</span>,
+                prompt_name=<span class="string">"metric_investigation"</span>,
+                arguments={<span class="string">"alert_id"</span>: ticket_context[<span class="string">"alert_id"</span>]}
+            )
+            <span class="keyword">if</span> metric_prompt:
+                enrichments.append(metric_prompt)
+        
+        <span class="comment"># Combine base prompt with enrichments</span>
+        <span class="keyword">return</span> base_prompt + <span class="string">"\n\n## Vendor-Specific Guidance\n"</span> + <span class="string">"\n\n"</span>.join(enrichments)</pre>
+            </div>
+        </section>
+        
+        <!-- Benefits -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">Benefits of MCP Prompts</h2>
+                <p class="section-description">
+                    Why incorporating MCP prompts makes HACI agents more effective.
+                </p>
+            </div>
+            
+            <div class="benefits-grid">
+                <div class="benefit-card">
+                    <div class="benefit-icon">🔄</div>
+                    <div class="benefit-title">Always Up-to-Date</div>
+                    <div class="benefit-text">Vendor best practices update without HACI deployments</div>
+                </div>
+                
+                <div class="benefit-card">
+                    <div class="benefit-icon">🎯</div>
+                    <div class="benefit-title">Context-Specific</div>
+                    <div class="benefit-text">Prompts include real-time data like PR details or alert context</div>
+                </div>
+                
+                <div class="benefit-card">
+                    <div class="benefit-icon">📉</div>
+                    <div class="benefit-title">Token Efficient</div>
+                    <div class="benefit-text">Load only relevant prompts, not all vendor documentation</div>
+                </div>
+                
+                <div class="benefit-card">
+                    <div class="benefit-icon">🔌</div>
+                    <div class="benefit-title">Extensible</div>
+                    <div class="benefit-text">New integrations bring their own investigation patterns</div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Best Practices -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">MCP Prompt Best Practices</h2>
+            </div>
+            
+            <div class="callout warning">
+                <div class="callout-title">
+                    <span>⚠️</span> Security Considerations
+                </div>
+                <div class="callout-content">
+                    MCP prompts come from external servers. HACI validates all retrieved prompts:
+                    <ul style="margin-top: 10px; margin-left: 20px;">
+                        <li><strong>Size limits:</strong> Reject prompts exceeding 10K tokens</li>
+                        <li><strong>Content scanning:</strong> Check for injection attempts</li>
+                        <li><strong>Allowlisting:</strong> Only accept prompts from registered servers</li>
+                        <li><strong>Fallback behavior:</strong> Always have a safe fallback if prompts fail validation</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="callout">
+                <div class="callout-title">
+                    <span>✅</span> Design Guidelines for Custom MCP Prompts
+                </div>
+                <div class="callout-content">
+                    When creating custom MCP servers for HACI:
+                    <ul style="margin-top: 10px; margin-left: 20px;">
+                        <li><strong>Keep prompts focused:</strong> One investigation pattern per prompt</li>
+                        <li><strong>Include context hints:</strong> Tell agents what data they're looking at</li>
+                        <li><strong>Provide output guidance:</strong> Suggest output formats compatible with HACI</li>
+                        <li><strong>Version your prompts:</strong> Include version metadata for debugging</li>
+                        <li><strong>Document arguments clearly:</strong> Make required vs optional obvious</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Navigation Footer -->
+        <div class="nav-footer">
+            <a href="haci_prompting_3_agents.html" class="nav-btn prev">
+                ← Previous: Agent Prompts
+            </a>
+            <a href="haci_prompting_1_foundations.html" class="nav-btn complete">
+                ✓ Complete — Return to Foundations
+            </a>
+        </div>
+    </div>
+    
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <div class="footer-title">HACI Prompting Framework</div>
+            <p>Complete documentation for crafting effective multi-agent prompts</p>
+            <div class="footer-stats">
+                <div class="footer-stat">
+                    <div class="footer-stat-value">4</div>
+                    <div class="footer-stat-label">Documentation Pages</div>
+                </div>
+                <div class="footer-stat">
+                    <div class="footer-stat-value">10</div>
+                    <div class="footer-stat-label">Agent Templates</div>
+                </div>
+                <div class="footer-stat">
+                    <div class="footer-stat-value">15+</div>
+                    <div class="footer-stat-label">MCP Prompts</div>
+                </div>
+                <div class="footer-stat">
+                    <div class="footer-stat-value">6</div>
+                    <div class="footer-stat-label">Prompt Principles</div>
+                </div>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
