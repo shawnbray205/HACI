@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HACI on LangSmith - Human-in-the-Loop Patterns</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --secondary: #7c3aed;
+            --success: #059669;
+            --warning: #d97706;
+            --info: #0891b2;
+            --langchain-green: #10b981;
+            --hitl-purple: #8b5cf6;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: var(--gray-800); background: var(--gray-50); }
+
+        .nav { position: sticky; top: 0; background: white; border-bottom: 1px solid var(--gray-200); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; z-index: 100; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .nav-brand { font-weight: 700; font-size: 1.25rem; color: var(--gray-900); }
+        .nav-brand span { color: var(--hitl-purple); }
+        .nav-links { display: flex; gap: 0.5rem; align-items: center; }
+        .nav-links a { color: var(--gray-600); text-decoration: none; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.875rem; transition: all 0.2s; }
+        .nav-links a:hover { background: var(--gray-100); color: var(--gray-900); }
+        .nav-links a.active { background: linear-gradient(135deg, var(--hitl-purple), var(--primary)); color: white; }
+        .page-indicator { background: var(--gray-100); padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; color: var(--gray-600); }
+
+        .hero { background: linear-gradient(135deg, var(--hitl-purple), var(--primary), var(--langchain-green)); color: white; padding: 4rem 2rem; text-align: center; }
+        .hero h1 { font-size: 2.5rem; margin-bottom: 1rem; font-weight: 800; }
+        .hero p { font-size: 1.25rem; opacity: 0.95; max-width: 700px; margin: 0 auto; }
+
+        .stats-bar { background: white; border-bottom: 1px solid var(--gray-200); padding: 1.5rem 2rem; display: flex; justify-content: center; gap: 4rem; flex-wrap: wrap; }
+        .stat { text-align: center; }
+        .stat-value { font-size: 1.75rem; font-weight: 700; color: var(--hitl-purple); }
+        .stat-label { font-size: 0.875rem; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.05em; }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 3rem 2rem; }
+        .section { margin-bottom: 4rem; }
+        .section-title { font-size: 1.75rem; font-weight: 700; color: var(--gray-900); margin-bottom: 1.5rem; padding-bottom: 0.75rem; border-bottom: 3px solid var(--gray-200); position: relative; text-align: center; }
+        .section-title::after { content: ''; position: absolute; bottom: -3px; left: 50%; transform: translateX(-50%); width: 60px; height: 3px; background: linear-gradient(90deg, var(--hitl-purple), var(--primary)); }
+
+        .code-block { background: #1e1e1e; border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+        .code-header { background: #2d2d2d; padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #404040; }
+        .code-filename { color: #9ca3af; font-size: 0.875rem; font-family: 'Fira Code', monospace; }
+        .code-lang { color: #10b981; font-size: 0.75rem; padding: 0.25rem 0.5rem; background: rgba(16,185,129,0.1); border-radius: 4px; }
+        .code-content { padding: 1.5rem; overflow-x: auto; }
+        pre { margin: 0; font-family: 'Fira Code', monospace; font-size: 0.875rem; line-height: 1.6; color: #e5e7eb; }
+        .keyword { color: #c586c0; }
+        .string { color: #ce9178; }
+        .function { color: #dcdcaa; }
+        .class { color: #4ec9b0; }
+        .comment { color: #6a9955; }
+        .decorator { color: #d7ba7d; }
+        .number { color: #b5cea8; }
+
+        .callout { padding: 1.25rem 1.5rem; border-radius: 12px; margin: 1.5rem 0; display: flex; gap: 1rem; }
+        .callout-icon { font-size: 1.5rem; flex-shrink: 0; }
+        .callout.info { background: linear-gradient(135deg, rgba(8,145,178,0.1), rgba(6,182,212,0.05)); border-left: 4px solid var(--info); }
+        .callout.success { background: linear-gradient(135deg, rgba(5,150,105,0.1), rgba(16,185,129,0.05)); border-left: 4px solid var(--success); }
+        .callout.warning { background: linear-gradient(135deg, rgba(217,119,6,0.1), rgba(245,158,11,0.05)); border-left: 4px solid var(--warning); }
+        .callout.tip { background: linear-gradient(135deg, rgba(139,92,246,0.1), rgba(139,92,246,0.05)); border-left: 4px solid var(--hitl-purple); }
+        .callout h4 { font-weight: 600; margin-bottom: 0.5rem; color: var(--gray-800); }
+        .callout p { color: var(--gray-700); font-size: 0.9375rem; }
+
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin: 2rem 0; }
+        .feature-card { background: white; border-radius: 12px; padding: 1.5rem; border: 1px solid var(--gray-200); }
+        .feature-card h4 { color: var(--hitl-purple); font-size: 1.125rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+        .feature-card p { color: var(--gray-600); font-size: 0.9375rem; margin-bottom: 0.75rem; }
+        .feature-card code { background: var(--gray-100); padding: 0.125rem 0.375rem; border-radius: 4px; font-size: 0.8125rem; }
+
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin: 1.5rem 0; }
+        th, td { padding: 1rem 1.25rem; text-align: left; border-bottom: 1px solid var(--gray-200); }
+        th { background: var(--gray-100); font-weight: 600; color: var(--gray-700); font-size: 0.875rem; text-transform: uppercase; }
+        td { color: var(--gray-700); font-size: 0.9375rem; }
+        tr:last-child td { border-bottom: none; }
+
+        .flow-diagram { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 2rem; margin: 2rem 0; text-align: center; }
+        .flow-steps { display: flex; justify-content: center; align-items: center; gap: 1rem; flex-wrap: wrap; }
+        .flow-step { background: linear-gradient(135deg, var(--hitl-purple), var(--primary)); color: white; padding: 1rem 1.5rem; border-radius: 12px; font-weight: 600; min-width: 140px; }
+        .flow-step.human { background: linear-gradient(135deg, var(--warning), #f59e0b); }
+        .flow-step.auto { background: linear-gradient(135deg, var(--success), var(--langchain-green)); }
+        .flow-arrow { font-size: 1.5rem; color: var(--gray-400); }
+
+        .interrupt-types { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+        .interrupt-card { background: white; border: 2px solid var(--gray-200); border-radius: 12px; padding: 1.5rem; transition: all 0.2s; }
+        .interrupt-card:hover { border-color: var(--hitl-purple); box-shadow: 0 4px 12px rgba(139,92,246,0.15); }
+        .interrupt-card h5 { color: var(--hitl-purple); font-size: 1rem; margin-bottom: 0.5rem; }
+        .interrupt-card p { color: var(--gray-600); font-size: 0.875rem; }
+
+        .nav-footer { display: flex; justify-content: space-between; padding: 2rem 0; margin-top: 2rem; border-top: 1px solid var(--gray-200); }
+        .nav-btn { display: flex; align-items: center; gap: 0.75rem; padding: 1rem 1.5rem; background: white; border: 1px solid var(--gray-200); border-radius: 12px; text-decoration: none; color: var(--gray-700); transition: all 0.2s; }
+        .nav-btn:hover { border-color: var(--primary); color: var(--primary); box-shadow: 0 4px 12px rgba(37,99,235,0.15); }
+        .nav-btn-label { font-size: 0.75rem; color: var(--gray-500); text-transform: uppercase; }
+        .nav-btn-title { font-weight: 600; }
+
+        footer { background: var(--gray-900); color: var(--gray-400); padding: 2rem; text-align: center; font-size: 0.875rem; }
+        footer strong { color: white; }
+
+        @media (max-width: 768px) { .hero h1 { font-size: 2rem; } .stats-bar { gap: 2rem; } .nav-links { display: none; } .flow-steps { flex-direction: column; } .flow-arrow { transform: rotate(90deg); } }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-brand">HACI <span>LangSmith</span></div>
+        <div class="nav-links">
+            <a href="haci_langsmith_1_setup.html">Setup</a>
+            <a href="haci_langsmith_2_graph.html">Graph</a>
+            <a href="haci_langsmith_3_agents.html">Agents</a>
+            <a href="haci_langsmith_4_observability.html">Observability</a>
+            <a href="haci_langsmith_5_harness_phases.html">Phases</a>
+            <a href="haci_langsmith_6_swarm.html">Swarm</a>
+            <a href="haci_langsmith_7_context.html">Context</a>
+            <a href="haci_langsmith_8_hitl.html" class="active">HITL</a>
+            <a href="haci_langsmith_9_testing.html">Testing</a>
+            <a href="haci_langsmith_10_deployment.html">Deploy</a>
+            <span class="page-indicator">8 of 10</span>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <h1>👤 Human-in-the-Loop Patterns</h1>
+        <p>Implement HACI's calibrated autonomy system with LangGraph interrupts, approval workflows, and seamless human oversight integration</p>
+    </section>
+
+    <div class="stats-bar">
+        <div class="stat">
+            <div class="stat-value">4</div>
+            <div class="stat-label">Interrupt Types</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">3</div>
+            <div class="stat-label">Approval Patterns</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">∞</div>
+            <div class="stat-label">State Persistence</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">&lt;100ms</div>
+            <div class="stat-label">Resume Latency</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Section 1: HITL Overview -->
+        <section class="section">
+            <h2 class="section-title">Human-in-the-Loop Overview</h2>
+            
+            <p style="text-align: center; color: var(--gray-600); margin-bottom: 2rem; max-width: 800px; margin-left: auto; margin-right: auto;">
+                HACI's "harness" provides calibrated human oversight that scales with risk. LangGraph's interrupt system enables pausing execution at any node, persisting state, waiting for human input, and resuming seamlessly.
+            </p>
+
+            <div class="flow-diagram">
+                <h4 style="margin-bottom: 1.5rem; color: var(--gray-700);">HACI HITL Flow</h4>
+                <div class="flow-steps">
+                    <div class="flow-step auto">Agent Executes</div>
+                    <span class="flow-arrow">→</span>
+                    <div class="flow-step">Interrupt Triggered</div>
+                    <span class="flow-arrow">→</span>
+                    <div class="flow-step human">Human Reviews</div>
+                    <span class="flow-arrow">→</span>
+                    <div class="flow-step">State Updated</div>
+                    <span class="flow-arrow">→</span>
+                    <div class="flow-step auto">Execution Resumes</div>
+                </div>
+            </div>
+
+            <div class="callout info">
+                <span class="callout-icon">💡</span>
+                <div>
+                    <h4>LangGraph Persistence</h4>
+                    <p>LangGraph automatically persists state when interrupted. The graph can remain paused for hours, days, or indefinitely—resuming exactly where it left off with full context preserved.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Interrupt Types -->
+        <section class="section">
+            <h2 class="section-title">LangGraph Interrupt Types</h2>
+
+            <div class="interrupt-types">
+                <div class="interrupt-card">
+                    <h5>🛑 interrupt_before</h5>
+                    <p>Pause execution before a node runs. Use for pre-approval of high-risk actions before they execute.</p>
+                </div>
+                <div class="interrupt-card">
+                    <h5>✅ interrupt_after</h5>
+                    <p>Pause execution after a node completes. Use for reviewing results before proceeding to next step.</p>
+                </div>
+                <div class="interrupt-card">
+                    <h5>⚡ Dynamic Interrupt</h5>
+                    <p>Programmatically trigger interrupts based on runtime conditions using <code>NodeInterrupt</code> exception.</p>
+                </div>
+                <div class="interrupt-card">
+                    <h5>🔄 Command Resume</h5>
+                    <p>Resume with modifications using <code>Command(resume=...)</code> to inject human decisions into state.</p>
+                </div>
+            </div>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-filename">interrupt_configuration.py</span>
+                    <span class="code-lang">Python</span>
+                </div>
+                <div class="code-content">
+<pre><span class="keyword">from</span> langgraph.graph <span class="keyword">import</span> StateGraph
+<span class="keyword">from</span> langgraph.checkpoint.postgres <span class="keyword">import</span> PostgresSaver
+<span class="keyword">from</span> langgraph.types <span class="keyword">import</span> interrupt, Command
+
+<span class="comment"># Configure graph with interrupt points</span>
+graph = StateGraph(HarnessState)
+
+<span class="comment"># Add nodes</span>
+graph.add_node(<span class="string">"think"</span>, think_node)
+graph.add_node(<span class="string">"act"</span>, act_node)
+graph.add_node(<span class="string">"human_gate"</span>, human_gate_node)
+graph.add_node(<span class="string">"execute_action"</span>, execute_action_node)
+
+<span class="comment"># Compile with interrupt points</span>
+checkpointer = PostgresSaver.from_conn_string(DATABASE_URL)
+
+workflow = graph.compile(
+    checkpointer=checkpointer,
+    <span class="comment"># Interrupt BEFORE high-risk execution</span>
+    interrupt_before=[<span class="string">"execute_action"</span>],
+    <span class="comment"># Interrupt AFTER human review gate</span>
+    interrupt_after=[<span class="string">"human_gate"</span>]
+)</pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Human Gate Node -->
+        <section class="section">
+            <h2 class="section-title">Human Gate Node Implementation</h2>
+
+            <p style="text-align: center; color: var(--gray-600); margin-bottom: 2rem;">
+                The human gate node determines when human approval is required based on HACI's calibrated autonomy rules.
+            </p>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-filename">human_gate.py</span>
+                    <span class="code-lang">Python</span>
+                </div>
+                <div class="code-content">
+<pre><span class="keyword">from</span> typing <span class="keyword">import</span> TypedDict, Literal, Optional
+<span class="keyword">from</span> langgraph.types <span class="keyword">import</span> interrupt
+<span class="keyword">from</span> pydantic <span class="keyword">import</span> BaseModel
+<span class="keyword">from</span> enum <span class="keyword">import</span> Enum
+
+<span class="keyword">class</span> <span class="class">RiskLevel</span>(str, Enum):
+    LOW = <span class="string">"low"</span>
+    MEDIUM = <span class="string">"medium"</span>
+    HIGH = <span class="string">"high"</span>
+    CRITICAL = <span class="string">"critical"</span>
+
+<span class="keyword">class</span> <span class="class">ApprovalRequest</span>(BaseModel):
+    <span class="string">"""Structured request for human approval."""</span>
+    action_type: str
+    action_details: str
+    risk_level: RiskLevel
+    affected_systems: list[str]
+    recommended_action: str
+    confidence: float
+    reversible: bool
+    timeout_minutes: int = <span class="number">30</span>
+
+<span class="keyword">class</span> <span class="class">HumanDecision</span>(BaseModel):
+    <span class="string">"""Human response to approval request."""</span>
+    approved: bool
+    modified_action: Optional[str] = <span class="keyword">None</span>
+    notes: Optional[str] = <span class="keyword">None</span>
+    reviewer_id: str
+
+<span class="decorator">@traceable</span>(name=<span class="string">"human_gate"</span>)
+<span class="keyword">def</span> <span class="function">human_gate_node</span>(state: HarnessState) -> dict:
+    <span class="string">"""
+    Evaluate if human approval is needed based on HACI calibrated autonomy.
+    """</span>
+    finding = state[<span class="string">"finding"</span>]
+    
+    <span class="comment"># Calculate risk level based on HACI criteria</span>
+    risk_level = <span class="function">assess_risk_level</span>(
+        action=finding.recommended_actions[<span class="number">0</span>] <span class="keyword">if</span> finding.recommended_actions <span class="keyword">else</span> <span class="keyword">None</span>,
+        confidence=finding.confidence,
+        affected_systems=<span class="function">identify_affected_systems</span>(finding)
+    )
+    
+    <span class="comment"># HACI Calibrated Autonomy Rules</span>
+    requires_approval = (
+        risk_level <span class="keyword">in</span> [RiskLevel.HIGH, RiskLevel.CRITICAL] <span class="keyword">or</span>
+        finding.confidence < <span class="number">0.7</span> <span class="keyword">or</span>
+        <span class="function">is_production_change</span>(finding) <span class="keyword">or</span>
+        state.get(<span class="string">"escalated"</span>, <span class="keyword">False</span>)
+    )
+    
+    <span class="keyword">if</span> <span class="keyword">not</span> requires_approval:
+        <span class="comment"># Auto-approve low-risk actions</span>
+        <span class="keyword">return</span> {
+            <span class="string">"human_decision"</span>: HumanDecision(
+                approved=<span class="keyword">True</span>,
+                reviewer_id=<span class="string">"auto_approved"</span>,
+                notes=<span class="string">f"Auto-approved: risk={risk_level.value}, confidence={finding.confidence:.0%}"</span>
+            ),
+            <span class="string">"requires_human_approval"</span>: <span class="keyword">False</span>
+        }
+    
+    <span class="comment"># Build approval request for human review</span>
+    approval_request = ApprovalRequest(
+        action_type=finding.recommended_actions[<span class="number">0</span>].<span class="function">split</span>(<span class="string">":"</span>)[<span class="number">0</span>] <span class="keyword">if</span> finding.recommended_actions <span class="keyword">else</span> <span class="string">"investigate"</span>,
+        action_details=finding.recommended_actions[<span class="number">0</span>] <span class="keyword">if</span> finding.recommended_actions <span class="keyword">else</span> <span class="string">"No specific action"</span>,
+        risk_level=risk_level,
+        affected_systems=<span class="function">identify_affected_systems</span>(finding),
+        recommended_action=finding.recommended_actions[<span class="number">0</span>] <span class="keyword">if</span> finding.recommended_actions <span class="keyword">else</span> <span class="string">"Manual review"</span>,
+        confidence=finding.confidence,
+        reversible=<span class="function">is_reversible</span>(finding)
+    )
+    
+    <span class="comment"># INTERRUPT: Pause and wait for human decision</span>
+    human_decision = <span class="function">interrupt</span>(approval_request.model_dump())
+    
+    <span class="comment"># Parse human response (after resume)</span>
+    <span class="keyword">return</span> {
+        <span class="string">"human_decision"</span>: HumanDecision(**human_decision),
+        <span class="string">"requires_human_approval"</span>: <span class="keyword">True</span>
+    }</pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Risk Assessment -->
+        <section class="section">
+            <h2 class="section-title">Risk Assessment Logic</h2>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Risk Level</th>
+                        <th>Criteria</th>
+                        <th>Approval Required</th>
+                        <th>Timeout</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong style="color: var(--success);">Low</strong></td>
+                        <td>Read-only, confidence ≥90%, non-production</td>
+                        <td>❌ Auto-approved</td>
+                        <td>N/A</td>
+                    </tr>
+                    <tr>
+                        <td><strong style="color: var(--info);">Medium</strong></td>
+                        <td>Reversible changes, confidence 70-90%</td>
+                        <td>⚠️ Optional review</td>
+                        <td>15 min</td>
+                    </tr>
+                    <tr>
+                        <td><strong style="color: var(--warning);">High</strong></td>
+                        <td>Production changes, confidence &lt;70%</td>
+                        <td>✅ Required</td>
+                        <td>30 min</td>
+                    </tr>
+                    <tr>
+                        <td><strong style="color: #ef4444;">Critical</strong></td>
+                        <td>Irreversible, customer-impacting, security</td>
+                        <td>✅ Required + escalation</td>
+                        <td>60 min</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-filename">risk_assessment.py</span>
+                    <span class="code-lang">Python</span>
+                </div>
+                <div class="code-content">
+<pre><span class="keyword">def</span> <span class="function">assess_risk_level</span>(
+    action: Optional[str],
+    confidence: float,
+    affected_systems: list[str]
+) -> RiskLevel:
+    <span class="string">"""
+    HACI risk assessment for calibrated autonomy.
+    """</span>
+    <span class="comment"># Critical: security or customer data</span>
+    <span class="keyword">if</span> <span class="keyword">any</span>(s <span class="keyword">in</span> [<span class="string">"security"</span>, <span class="string">"auth"</span>, <span class="string">"customer_data"</span>, <span class="string">"billing"</span>] 
+           <span class="keyword">for</span> s <span class="keyword">in</span> affected_systems):
+        <span class="keyword">return</span> RiskLevel.CRITICAL
+    
+    <span class="comment"># Critical: irreversible actions</span>
+    irreversible_keywords = [<span class="string">"delete"</span>, <span class="string">"drop"</span>, <span class="string">"terminate"</span>, <span class="string">"destroy"</span>]
+    <span class="keyword">if</span> action <span class="keyword">and</span> <span class="keyword">any</span>(kw <span class="keyword">in</span> action.lower() <span class="keyword">for</span> kw <span class="keyword">in</span> irreversible_keywords):
+        <span class="keyword">return</span> RiskLevel.CRITICAL
+    
+    <span class="comment"># High: production or low confidence</span>
+    <span class="keyword">if</span> <span class="string">"production"</span> <span class="keyword">in</span> affected_systems <span class="keyword">or</span> confidence < <span class="number">0.7</span>:
+        <span class="keyword">return</span> RiskLevel.HIGH
+    
+    <span class="comment"># Medium: staging/test or moderate confidence</span>
+    <span class="keyword">if</span> <span class="keyword">any</span>(s <span class="keyword">in</span> [<span class="string">"staging"</span>, <span class="string">"test"</span>] <span class="keyword">for</span> s <span class="keyword">in</span> affected_systems) <span class="keyword">or</span> confidence < <span class="number">0.9</span>:
+        <span class="keyword">return</span> RiskLevel.MEDIUM
+    
+    <span class="comment"># Low: read-only, high confidence</span>
+    <span class="keyword">return</span> RiskLevel.LOW
+
+<span class="keyword">def</span> <span class="function">identify_affected_systems</span>(finding: Finding) -> list[str]:
+    <span class="string">"""Extract affected systems from finding evidence."""</span>
+    systems = set()
+    
+    <span class="keyword">for</span> evidence <span class="keyword">in</span> finding.supporting_evidence:
+        <span class="keyword">if</span> <span class="string">"prod"</span> <span class="keyword">in</span> evidence.lower():
+            systems.add(<span class="string">"production"</span>)
+        <span class="keyword">if</span> <span class="string">"database"</span> <span class="keyword">in</span> evidence.lower():
+            systems.add(<span class="string">"database"</span>)
+        <span class="keyword">if</span> <span class="string">"auth"</span> <span class="keyword">in</span> evidence.lower() <span class="keyword">or</span> <span class="string">"security"</span> <span class="keyword">in</span> evidence.lower():
+            systems.add(<span class="string">"security"</span>)
+    
+    <span class="keyword">return</span> list(systems) <span class="keyword">or</span> [<span class="string">"general"</span>]
+
+<span class="keyword">def</span> <span class="function">is_reversible</span>(finding: Finding) -> bool:
+    <span class="string">"""Determine if recommended action is reversible."""</span>
+    <span class="keyword">if</span> <span class="keyword">not</span> finding.recommended_actions:
+        <span class="keyword">return</span> <span class="keyword">True</span>
+    
+    irreversible = [<span class="string">"delete"</span>, <span class="string">"drop"</span>, <span class="string">"truncate"</span>, <span class="string">"terminate"</span>]
+    <span class="keyword">return</span> <span class="keyword">not</span> <span class="keyword">any</span>(
+        kw <span class="keyword">in</span> action.lower() 
+        <span class="keyword">for</span> action <span class="keyword">in</span> finding.recommended_actions 
+        <span class="keyword">for</span> kw <span class="keyword">in</span> irreversible
+    )</pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: Resuming After Interrupt -->
+        <section class="section">
+            <h2 class="section-title">Resuming After Human Review</h2>
+
+            <p style="text-align: center; color: var(--gray-600); margin-bottom: 2rem;">
+                After human review, resume execution by providing a <code>Command</code> with the human's decision. LangGraph injects this into the graph state.
+            </p>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-filename">resume_workflow.py</span>
+                    <span class="code-lang">Python</span>
+                </div>
+                <div class="code-content">
+<pre><span class="keyword">from</span> langgraph.types <span class="keyword">import</span> Command
+<span class="keyword">import</span> asyncio
+
+<span class="keyword">async</span> <span class="keyword">def</span> <span class="function">handle_approval_request</span>(
+    thread_id: str,
+    approval_request: dict
+) -> dict:
+    <span class="string">"""
+    API endpoint to handle human approval workflow.
+    Called by external approval system (Slack, PagerDuty, web UI, etc.)
+    """</span>
+    <span class="comment"># Store approval request for UI</span>
+    <span class="keyword">await</span> <span class="function">store_pending_approval</span>(thread_id, approval_request)
+    
+    <span class="comment"># Notify reviewers via configured channels</span>
+    <span class="keyword">await</span> <span class="function">notify_reviewers</span>(
+        thread_id=thread_id,
+        request=approval_request,
+        channels=[<span class="string">"slack"</span>, <span class="string">"pagerduty"</span>] <span class="keyword">if</span> approval_request[<span class="string">"risk_level"</span>] == <span class="string">"critical"</span> <span class="keyword">else</span> [<span class="string">"slack"</span>]
+    )
+    
+    <span class="keyword">return</span> {<span class="string">"status"</span>: <span class="string">"pending"</span>, <span class="string">"thread_id"</span>: thread_id}
+
+<span class="keyword">async</span> <span class="keyword">def</span> <span class="function">submit_human_decision</span>(
+    thread_id: str,
+    decision: HumanDecision
+) -> dict:
+    <span class="string">"""
+    Resume workflow after human provides decision.
+    """</span>
+    <span class="comment"># Get the compiled workflow</span>
+    workflow = <span class="function">get_workflow</span>()
+    
+    <span class="comment"># Resume with human decision injected into state</span>
+    config = {<span class="string">"configurable"</span>: {<span class="string">"thread_id"</span>: thread_id}}
+    
+    result = <span class="keyword">await</span> workflow.ainvoke(
+        <span class="comment"># Command.resume() injects value where interrupt() was called</span>
+        Command(resume=decision.model_dump()),
+        config=config
+    )
+    
+    <span class="comment"># Log decision for audit trail</span>
+    <span class="keyword">await</span> <span class="function">log_approval_decision</span>(
+        thread_id=thread_id,
+        decision=decision,
+        result=result
+    )
+    
+    <span class="keyword">return</span> result
+
+<span class="comment"># Example: FastAPI endpoints for approval workflow</span>
+<span class="keyword">from</span> fastapi <span class="keyword">import</span> FastAPI, HTTPException
+
+app = FastAPI()
+
+<span class="decorator">@app.post</span>(<span class="string">"/approvals/{thread_id}/approve"</span>)
+<span class="keyword">async</span> <span class="keyword">def</span> <span class="function">approve_action</span>(
+    thread_id: str,
+    reviewer_id: str,
+    notes: Optional[str] = <span class="keyword">None</span>
+):
+    decision = HumanDecision(
+        approved=<span class="keyword">True</span>,
+        reviewer_id=reviewer_id,
+        notes=notes
+    )
+    <span class="keyword">return</span> <span class="keyword">await</span> <span class="function">submit_human_decision</span>(thread_id, decision)
+
+<span class="decorator">@app.post</span>(<span class="string">"/approvals/{thread_id}/reject"</span>)
+<span class="keyword">async</span> <span class="keyword">def</span> <span class="function">reject_action</span>(
+    thread_id: str,
+    reviewer_id: str,
+    notes: str,
+    modified_action: Optional[str] = <span class="keyword">None</span>
+):
+    decision = HumanDecision(
+        approved=<span class="keyword">False</span>,
+        reviewer_id=reviewer_id,
+        notes=notes,
+        modified_action=modified_action
+    )
+    <span class="keyword">return</span> <span class="keyword">await</span> <span class="function">submit_human_decision</span>(thread_id, decision)</pre>
+                </div>
+            </div>
+
+            <div class="callout tip">
+                <span class="callout-icon">🔑</span>
+                <div>
+                    <h4>Thread ID is Key</h4>
+                    <p>The <code>thread_id</code> uniquely identifies the paused workflow instance. Store it when the interrupt occurs and use it to resume. All state is persisted in the checkpointer database.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 6: Dynamic Interrupts -->
+        <section class="section">
+            <h2 class="section-title">Dynamic Runtime Interrupts</h2>
+
+            <p style="text-align: center; color: var(--gray-600); margin-bottom: 2rem;">
+                For conditions that can only be evaluated at runtime, use <code>NodeInterrupt</code> exception to trigger interrupts dynamically.
+            </p>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-filename">dynamic_interrupts.py</span>
+                    <span class="code-lang">Python</span>
+                </div>
+                <div class="code-content">
+<pre><span class="keyword">from</span> langgraph.errors <span class="keyword">import</span> NodeInterrupt
+
+<span class="decorator">@traceable</span>(name=<span class="string">"act_with_dynamic_interrupt"</span>)
+<span class="keyword">async</span> <span class="keyword">def</span> <span class="function">act_node_with_interrupts</span>(state: HarnessState) -> dict:
+    <span class="string">"""
+    Execute tools with dynamic interrupt capability.
+    """</span>
+    results = []
+    
+    <span class="keyword">for</span> tool_call <span class="keyword">in</span> state[<span class="string">"investigation_plan"</span>]:
+        tool = <span class="function">get_tool</span>(tool_call.tool_name)
+        
+        <span class="comment"># Check if tool requires approval at runtime</span>
+        <span class="keyword">if</span> tool.requires_approval:
+            <span class="comment"># Dynamic interrupt with approval request</span>
+            <span class="keyword">raise</span> NodeInterrupt({
+                <span class="string">"type"</span>: <span class="string">"tool_approval_required"</span>,
+                <span class="string">"tool_name"</span>: tool_call.tool_name,
+                <span class="string">"parameters"</span>: tool_call.parameters,
+                <span class="string">"reason"</span>: tool.approval_reason,
+                <span class="string">"risk_level"</span>: tool.risk_level
+            })
+        
+        <span class="comment"># Check resource thresholds</span>
+        <span class="keyword">if</span> tool_call.tool_name == <span class="string">"scale_infrastructure"</span>:
+            requested_scale = tool_call.parameters.get(<span class="string">"scale_factor"</span>, <span class="number">1</span>)
+            <span class="keyword">if</span> requested_scale > <span class="number">5</span>:
+                <span class="keyword">raise</span> NodeInterrupt({
+                    <span class="string">"type"</span>: <span class="string">"resource_threshold_exceeded"</span>,
+                    <span class="string">"requested"</span>: requested_scale,
+                    <span class="string">"threshold"</span>: <span class="number">5</span>,
+                    <span class="string">"message"</span>: <span class="string">f"Scale factor {requested_scale}x exceeds auto-approval limit"</span>
+                })
+        
+        <span class="comment"># Check cost thresholds</span>
+        estimated_cost = <span class="keyword">await</span> <span class="function">estimate_action_cost</span>(tool_call)
+        <span class="keyword">if</span> estimated_cost > state.get(<span class="string">"cost_threshold"</span>, <span class="number">100</span>):
+            <span class="keyword">raise</span> NodeInterrupt({
+                <span class="string">"type"</span>: <span class="string">"cost_threshold_exceeded"</span>,
+                <span class="string">"estimated_cost"</span>: estimated_cost,
+                <span class="string">"threshold"</span>: state.get(<span class="string">"cost_threshold"</span>, <span class="number">100</span>),
+                <span class="string">"tool"</span>: tool_call.tool_name
+            })
+        
+        <span class="comment"># Execute tool</span>
+        result = <span class="keyword">await</span> tool.<span class="function">execute</span>(**tool_call.parameters)
+        results.append(result)
+    
+    <span class="keyword">return</span> {<span class="string">"tool_results"</span>: results}</pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 7: Approval Notifications -->
+        <section class="section">
+            <h2 class="section-title">Approval Notification Integrations</h2>
+
+            <div class="cards-grid">
+                <div class="feature-card">
+                    <h4>💬 Slack Integration</h4>
+                    <p>Send approval requests as interactive Slack messages with Approve/Reject buttons. Use Slack webhooks to receive decisions.</p>
+                    <code>slack_sdk.WebClient</code>
+                </div>
+                <div class="feature-card">
+                    <h4>📟 PagerDuty</h4>
+                    <p>Escalate critical approvals to on-call engineers via PagerDuty incidents. Auto-acknowledge when resolved.</p>
+                    <code>pdpyras.APISession</code>
+                </div>
+                <div class="feature-card">
+                    <h4>🎫 Jira/ServiceNow</h4>
+                    <p>Create approval tickets for formal change management. Link workflow state to ticket status.</p>
+                    <code>jira.JIRA</code>
+                </div>
+                <div class="feature-card">
+                    <h4>🌐 Custom Web UI</h4>
+                    <p>Build custom approval dashboards with real-time status. WebSocket for live updates.</p>
+                    <code>FastAPI + React</code>
+                </div>
+            </div>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-filename">slack_approval.py</span>
+                    <span class="code-lang">Python</span>
+                </div>
+                <div class="code-content">
+<pre><span class="keyword">from</span> slack_sdk <span class="keyword">import</span> WebClient
+<span class="keyword">from</span> slack_sdk.models.blocks <span class="keyword">import</span> SectionBlock, ActionsBlock, ButtonElement
+
+<span class="keyword">async</span> <span class="keyword">def</span> <span class="function">send_slack_approval</span>(
+    thread_id: str,
+    approval_request: ApprovalRequest,
+    channel: str = <span class="string">"#haci-approvals"</span>
+):
+    client = WebClient(token=SLACK_BOT_TOKEN)
+    
+    <span class="comment"># Risk level emoji</span>
+    risk_emoji = {
+        <span class="string">"low"</span>: <span class="string">"🟢"</span>,
+        <span class="string">"medium"</span>: <span class="string">"🟡"</span>,
+        <span class="string">"high"</span>: <span class="string">"🟠"</span>,
+        <span class="string">"critical"</span>: <span class="string">"🔴"</span>
+    }
+    
+    blocks = [
+        SectionBlock(
+            text=<span class="string">f"""*HACI Approval Required* {risk_emoji.get(approval_request.risk_level, '⚪')}
+
+*Action:* {approval_request.action_type}
+*Details:* {approval_request.action_details}
+*Risk Level:* {approval_request.risk_level.upper()}
+*Confidence:* {approval_request.confidence:.0%}
+*Affected Systems:* {', '.join(approval_request.affected_systems)}
+*Reversible:* {'Yes' if approval_request.reversible else 'No'}
+*Thread ID:* `{thread_id}`"""</span>
+        ),
+        ActionsBlock(
+            elements=[
+                ButtonElement(
+                    text=<span class="string">"✅ Approve"</span>,
+                    style=<span class="string">"primary"</span>,
+                    action_id=<span class="string">"approve"</span>,
+                    value=thread_id
+                ),
+                ButtonElement(
+                    text=<span class="string">"❌ Reject"</span>,
+                    style=<span class="string">"danger"</span>,
+                    action_id=<span class="string">"reject"</span>,
+                    value=thread_id
+                ),
+                ButtonElement(
+                    text=<span class="string">"📝 Modify"</span>,
+                    action_id=<span class="string">"modify"</span>,
+                    value=thread_id
+                )
+            ]
+        )
+    ]
+    
+    response = client.chat_postMessage(
+        channel=channel,
+        blocks=blocks,
+        text=<span class="string">f"HACI Approval: {approval_request.action_type}"</span>
+    )
+    
+    <span class="keyword">return</span> response[<span class="string">"ts"</span>]  <span class="comment"># Message timestamp for updates</span></pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 8: Timeout Handling -->
+        <section class="section">
+            <h2 class="section-title">Timeout & Escalation Handling</h2>
+
+            <div class="callout warning">
+                <span class="callout-icon">⏱️</span>
+                <div>
+                    <h4>Approval Timeouts</h4>
+                    <p>Configure automatic escalation when approvals aren't received within timeout windows. Prevent workflows from being stuck indefinitely.</p>
+                </div>
+            </div>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-filename">timeout_escalation.py</span>
+                    <span class="code-lang">Python</span>
+                </div>
+                <div class="code-content">
+<pre><span class="keyword">import</span> asyncio
+<span class="keyword">from</span> datetime <span class="keyword">import</span> datetime, timedelta
+
+<span class="keyword">class</span> <span class="class">ApprovalTimeoutManager</span>:
+    <span class="string">"""Manage approval timeouts and escalations."""</span>
+    
+    <span class="keyword">def</span> <span class="function">__init__</span>(self):
+        self.pending_approvals: dict[str, dict] = {}
+        self.escalation_levels = [
+            {<span class="string">"minutes"</span>: <span class="number">15</span>, <span class="string">"action"</span>: <span class="string">"reminder"</span>},
+            {<span class="string">"minutes"</span>: <span class="number">30</span>, <span class="string">"action"</span>: <span class="string">"escalate_manager"</span>},
+            {<span class="string">"minutes"</span>: <span class="number">60</span>, <span class="string">"action"</span>: <span class="string">"escalate_oncall"</span>},
+            {<span class="string">"minutes"</span>: <span class="number">120</span>, <span class="string">"action"</span>: <span class="string">"auto_reject"</span>}
+        ]
+    
+    <span class="keyword">async</span> <span class="keyword">def</span> <span class="function">register_pending_approval</span>(
+        self,
+        thread_id: str,
+        approval_request: ApprovalRequest
+    ):
+        <span class="string">"""Register approval with timeout tracking."""</span>
+        self.pending_approvals[thread_id] = {
+            <span class="string">"request"</span>: approval_request,
+            <span class="string">"created_at"</span>: datetime.utcnow(),
+            <span class="string">"escalation_index"</span>: <span class="number">0</span>,
+            <span class="string">"notifications_sent"</span>: []
+        }
+        
+        <span class="comment"># Start timeout watcher</span>
+        asyncio.create_task(
+            self.<span class="function">watch_timeout</span>(thread_id)
+        )
+    
+    <span class="keyword">async</span> <span class="keyword">def</span> <span class="function">watch_timeout</span>(self, thread_id: str):
+        <span class="string">"""Monitor approval and trigger escalations."""</span>
+        <span class="keyword">while</span> thread_id <span class="keyword">in</span> self.pending_approvals:
+            approval = self.pending_approvals[thread_id]
+            elapsed = datetime.utcnow() - approval[<span class="string">"created_at"</span>]
+            
+            <span class="comment"># Check each escalation level</span>
+            <span class="keyword">for</span> i, level <span class="keyword">in</span> enumerate(self.escalation_levels):
+                <span class="keyword">if</span> (elapsed > timedelta(minutes=level[<span class="string">"minutes"</span>]) <span class="keyword">and</span>
+                    i >= approval[<span class="string">"escalation_index"</span>]):
+                    
+                    <span class="keyword">await</span> self.<span class="function">execute_escalation</span>(
+                        thread_id,
+                        level[<span class="string">"action"</span>]
+                    )
+                    approval[<span class="string">"escalation_index"</span>] = i + <span class="number">1</span>
+            
+            <span class="keyword">await</span> asyncio.sleep(<span class="number">60</span>)  <span class="comment"># Check every minute</span>
+    
+    <span class="keyword">async</span> <span class="keyword">def</span> <span class="function">execute_escalation</span>(self, thread_id: str, action: str):
+        <span class="string">"""Execute escalation action."""</span>
+        <span class="keyword">if</span> action == <span class="string">"reminder"</span>:
+            <span class="keyword">await</span> <span class="function">send_reminder</span>(thread_id)
+        <span class="keyword">elif</span> action == <span class="string">"escalate_manager"</span>:
+            <span class="keyword">await</span> <span class="function">notify_manager</span>(thread_id)
+        <span class="keyword">elif</span> action == <span class="string">"escalate_oncall"</span>:
+            <span class="keyword">await</span> <span class="function">page_oncall</span>(thread_id)
+        <span class="keyword">elif</span> action == <span class="string">"auto_reject"</span>:
+            <span class="comment"># Auto-reject with timeout reason</span>
+            <span class="keyword">await</span> <span class="function">submit_human_decision</span>(
+                thread_id,
+                HumanDecision(
+                    approved=<span class="keyword">False</span>,
+                    reviewer_id=<span class="string">"system_timeout"</span>,
+                    notes=<span class="string">"Auto-rejected: approval timeout exceeded"</span>
+                )
+            )
+            <span class="keyword">del</span> self.pending_approvals[thread_id]</pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 9: Audit Trail -->
+        <section class="section">
+            <h2 class="section-title">Audit Trail & Compliance</h2>
+
+            <p style="text-align: center; color: var(--gray-600); margin-bottom: 2rem;">
+                All human decisions are logged for compliance, debugging, and continuous improvement of the autonomy calibration.
+            </p>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-filename">audit_logging.py</span>
+                    <span class="code-lang">Python</span>
+                </div>
+                <div class="code-content">
+<pre><span class="keyword">from</span> pydantic <span class="keyword">import</span> BaseModel
+<span class="keyword">from</span> datetime <span class="keyword">import</span> datetime
+<span class="keyword">import</span> json
+
+<span class="keyword">class</span> <span class="class">ApprovalAuditLog</span>(BaseModel):
+    <span class="string">"""Immutable audit record for human decisions."""</span>
+    id: str
+    thread_id: str
+    timestamp: datetime
+    
+    <span class="comment"># Request details</span>
+    action_type: str
+    risk_level: str
+    affected_systems: list[str]
+    confidence: float
+    
+    <span class="comment"># Decision details</span>
+    approved: bool
+    reviewer_id: str
+    reviewer_notes: Optional[str]
+    modified_action: Optional[str]
+    
+    <span class="comment"># Timing</span>
+    request_time: datetime
+    decision_time: datetime
+    response_time_seconds: float
+    
+    <span class="comment"># Outcome (populated after execution)</span>
+    execution_result: Optional[str] = <span class="keyword">None</span>
+    execution_success: Optional[bool] = <span class="keyword">None</span>
+
+<span class="keyword">class</span> <span class="class">AuditLogger</span>:
+    <span class="string">"""Log all HITL interactions for compliance."""</span>
+    
+    <span class="keyword">def</span> <span class="function">__init__</span>(self, db_connection):
+        self.db = db_connection
+    
+    <span class="keyword">async</span> <span class="keyword">def</span> <span class="function">log_approval_decision</span>(
+        self,
+        thread_id: str,
+        request: ApprovalRequest,
+        decision: HumanDecision,
+        request_time: datetime
+    ) -> ApprovalAuditLog:
+        <span class="string">"""Create audit log entry for approval decision."""</span>
+        now = datetime.utcnow()
+        
+        log_entry = ApprovalAuditLog(
+            id=<span class="function">generate_uuid</span>(),
+            thread_id=thread_id,
+            timestamp=now,
+            action_type=request.action_type,
+            risk_level=request.risk_level.value,
+            affected_systems=request.affected_systems,
+            confidence=request.confidence,
+            approved=decision.approved,
+            reviewer_id=decision.reviewer_id,
+            reviewer_notes=decision.notes,
+            modified_action=decision.modified_action,
+            request_time=request_time,
+            decision_time=now,
+            response_time_seconds=(now - request_time).total_seconds()
+        )
+        
+        <span class="comment"># Persist to audit database</span>
+        <span class="keyword">await</span> self.db.execute(
+            <span class="string">"""
+            INSERT INTO approval_audit_logs 
+            (id, thread_id, timestamp, data)
+            VALUES ($1, $2, $3, $4)
+            """</span>,
+            log_entry.id,
+            thread_id,
+            now,
+            log_entry.model_dump_json()
+        )
+        
+        <span class="comment"># Also log to LangSmith for correlation</span>
+        <span class="keyword">with</span> trace(
+            name=<span class="string">"human_decision"</span>,
+            run_type=<span class="string">"chain"</span>,
+            metadata={<span class="string">"thread_id"</span>: thread_id}
+        ) <span class="keyword">as</span> run:
+            run.end(outputs={<span class="string">"audit_log"</span>: log_entry.model_dump()})
+        
+        <span class="keyword">return</span> log_entry
+    
+    <span class="keyword">async</span> <span class="keyword">def</span> <span class="function">get_approval_metrics</span>(
+        self,
+        start_date: datetime,
+        end_date: datetime
+    ) -> dict:
+        <span class="string">"""Generate HITL metrics for dashboards."""</span>
+        rows = <span class="keyword">await</span> self.db.fetch(
+            <span class="string">"""
+            SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN data->>'approved' = 'true' THEN 1 ELSE 0 END) as approved,
+                AVG((data->>'response_time_seconds')::float) as avg_response_time,
+                data->>'risk_level' as risk_level
+            FROM approval_audit_logs
+            WHERE timestamp BETWEEN $1 AND $2
+            GROUP BY data->>'risk_level'
+            """</span>,
+            start_date, end_date
+        )
+        
+        <span class="keyword">return</span> {
+            <span class="string">"by_risk_level"</span>: [dict(r) <span class="keyword">for</span> r <span class="keyword">in</span> rows],
+            <span class="string">"period"</span>: {<span class="string">"start"</span>: start_date, <span class="string">"end"</span>: end_date}
+        }</pre>
+                </div>
+            </div>
+
+            <div class="callout success">
+                <span class="callout-icon">✅</span>
+                <div>
+                    <h4>ISO 42001 Compliance</h4>
+                    <p>This audit logging structure supports HACI's AI Governance Framework requirements for human oversight documentation, decision traceability, and continuous monitoring.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Navigation Footer -->
+        <nav class="nav-footer">
+            <a href="haci_langsmith_7_context.html" class="nav-btn">
+                <span>←</span>
+                <div>
+                    <div class="nav-btn-label">Previous</div>
+                    <div class="nav-btn-title">Context Engineering</div>
+                </div>
+            </a>
+            <a href="haci_langsmith_9_testing.html" class="nav-btn">
+                <div>
+                    <div class="nav-btn-label">Next</div>
+                    <div class="nav-btn-title">Testing & Evaluation</div>
+                </div>
+                <span>→</span>
+            </a>
+        </nav>
+    </div>
+
+    <footer>
+        <p><strong>HACI on LangSmith</strong> - Implementation Guide</p>
+        <p>Human-in-the-Loop Patterns • Calibrated Autonomy • Enterprise AI Governance</p>
+    </footer>
+</body>
+</html>

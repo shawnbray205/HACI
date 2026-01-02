@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HACI on LangSmith - Testing & Evaluation</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --secondary: #7c3aed;
+            --success: #059669;
+            --warning: #d97706;
+            --info: #0891b2;
+            --langchain-green: #10b981;
+            --testing-cyan: #06b6d4;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: var(--gray-800); background: var(--gray-50); }
+
+        .nav { position: sticky; top: 0; background: white; border-bottom: 1px solid var(--gray-200); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; z-index: 100; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .nav-brand { font-weight: 700; font-size: 1.25rem; color: var(--gray-900); }
+        .nav-brand span { color: var(--testing-cyan); }
+        .nav-links { display: flex; gap: 0.5rem; align-items: center; }
+        .nav-links a { color: var(--gray-600); text-decoration: none; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.875rem; transition: all 0.2s; }
+        .nav-links a:hover { background: var(--gray-100); color: var(--gray-900); }
+        .nav-links a.active { background: linear-gradient(135deg, var(--testing-cyan), var(--primary)); color: white; }
+        .page-indicator { background: var(--gray-100); padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; color: var(--gray-600); }
+
+        .hero { background: linear-gradient(135deg, var(--testing-cyan), var(--primary), var(--langchain-green)); color: white; padding: 4rem 2rem; text-align: center; }
+        .hero h1 { font-size: 2.5rem; margin-bottom: 1rem; font-weight: 800; }
+        .hero p { font-size: 1.25rem; opacity: 0.95; max-width: 700px; margin: 0 auto; }
+
+        .stats-bar { background: white; border-bottom: 1px solid var(--gray-200); padding: 1.5rem 2rem; display: flex; justify-content: center; gap: 4rem; flex-wrap: wrap; }
+        .stat { text-align: center; }
+        .stat-value { font-size: 1.75rem; font-weight: 700; color: var(--testing-cyan); }
+        .stat-label { font-size: 0.875rem; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.05em; }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 3rem 2rem; }
+        .section { margin-bottom: 4rem; }
+        .section-title { font-size: 1.75rem; font-weight: 700; color: var(--gray-900); margin-bottom: 1.5rem; padding-bottom: 0.75rem; border-bottom: 3px solid var(--gray-200); position: relative; text-align: center; }
+        .section-title::after { content: ''; position: absolute; bottom: -3px; left: 50%; transform: translateX(-50%); width: 60px; height: 3px; background: linear-gradient(90deg, var(--testing-cyan), var(--primary)); }
+
+        .code-block { background: #1e1e1e; border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+        .code-header { background: #2d2d2d; padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #404040; }
+        .code-filename { color: #9ca3af; font-size: 0.875rem; font-family: 'Fira Code', monospace; }
+        .code-lang { color: #10b981; font-size: 0.75rem; padding: 0.25rem 0.5rem; background: rgba(16,185,129,0.1); border-radius: 4px; }
+        .code-content { padding: 1.5rem; overflow-x: auto; }
+        pre { margin: 0; font-family: 'Fira Code', monospace; font-size: 0.875rem; line-height: 1.6; color: #e5e7eb; }
+        .keyword { color: #c586c0; }
+        .string { color: #ce9178; }
+        .function { color: #dcdcaa; }
+        .class { color: #4ec9b0; }
+        .comment { color: #6a9955; }
+        .decorator { color: #d7ba7d; }
+        .number { color: #b5cea8; }
+
+        .callout { padding: 1.25rem 1.5rem; border-radius: 12px; margin: 1.5rem 0; display: flex; gap: 1rem; }
+        .callout-icon { font-size: 1.5rem; flex-shrink: 0; }
+        .callout.info { background: linear-gradient(135deg, rgba(8,145,178,0.1), rgba(6,182,212,0.05)); border-left: 4px solid var(--info); }
+        .callout.success { background: linear-gradient(135deg, rgba(5,150,105,0.1), rgba(16,185,129,0.05)); border-left: 4px solid var(--success); }
+        .callout.warning { background: linear-gradient(135deg, rgba(217,119,6,0.1), rgba(245,158,11,0.05)); border-left: 4px solid var(--warning); }
+        .callout.tip { background: linear-gradient(135deg, rgba(6,182,212,0.1), rgba(6,182,212,0.05)); border-left: 4px solid var(--testing-cyan); }
+        .callout h4 { font-weight: 600; margin-bottom: 0.5rem; color: var(--gray-800); }
+        .callout p { color: var(--gray-700); font-size: 0.9375rem; }
+
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin: 2rem 0; }
+        .feature-card { background: white; border-radius: 12px; padding: 1.5rem; border: 1px solid var(--gray-200); }
+        .feature-card h4 { color: var(--testing-cyan); font-size: 1.125rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+        .feature-card p { color: var(--gray-600); font-size: 0.9375rem; margin-bottom: 0.75rem; }
+        .feature-card code { background: var(--gray-100); padding: 0.125rem 0.375rem; border-radius: 4px; font-size: 0.8125rem; }
+
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin: 1.5rem 0; }
+        th, td { padding: 1rem 1.25rem; text-align: left; border-bottom: 1px solid var(--gray-200); }
+        th { background: var(--gray-100); font-weight: 600; color: var(--gray-700); font-size: 0.875rem; text-transform: uppercase; }
+        td { color: var(--gray-700); font-size: 0.9375rem; }
+        tr:last-child td { border-bottom: none; }
+
+        .test-pyramid { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 2rem; margin: 2rem 0; text-align: center; }
+        .pyramid-level { margin: 0.5rem auto; padding: 1rem; border-radius: 8px; font-weight: 600; color: white; }
+        .pyramid-level.e2e { width: 40%; background: linear-gradient(135deg, #ef4444, #f97316); }
+        .pyramid-level.integration { width: 60%; background: linear-gradient(135deg, var(--warning), #fbbf24); }
+        .pyramid-level.unit { width: 80%; background: linear-gradient(135deg, var(--success), var(--langchain-green)); }
+        .pyramid-label { margin-top: 0.25rem; font-size: 0.75rem; color: var(--gray-500); }
+
+        .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+        .metric-card { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 1.5rem; text-align: center; }
+        .metric-card .value { font-size: 2rem; font-weight: 700; color: var(--testing-cyan); }
+        .metric-card .label { font-size: 0.875rem; color: var(--gray-600); margin-top: 0.25rem; }
+        .metric-card .threshold { font-size: 0.75rem; color: var(--gray-500); margin-top: 0.5rem; }
+
+        .nav-footer { display: flex; justify-content: space-between; padding: 2rem 0; margin-top: 2rem; border-top: 1px solid var(--gray-200); }
+        .nav-btn { display: flex; align-items: center; gap: 0.75rem; padding: 1rem 1.5rem; background: white; border: 1px solid var(--gray-200); border-radius: 12px; text-decoration: none; color: var(--gray-700); transition: all 0.2s; }
+        .nav-btn:hover { border-color: var(--primary); color: var(--primary); box-shadow: 0 4px 12px rgba(37,99,235,0.15); }
+        .nav-btn-label { font-size: 0.75rem; color: var(--gray-500); text-transform: uppercase; }
+        .nav-btn-title { font-weight: 600; }
+
+        footer { background: var(--gray-900); color: var(--gray-400); padding: 2rem; text-align: center; font-size: 0.875rem; }
+        footer strong { color: white; }
+
+        @media (max-width: 768px) { .hero h1 { font-size: 2rem; } .stats-bar { gap: 2rem; } .nav-links { display: none; } }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-brand">HACI <span>LangSmith</span></div>
+        <div class="nav-links">
+            <a href="haci_langsmith_1_setup.html">Setup</a>
+            <a href="haci_langsmith_2_graph.html">Graph</a>
+            <a href="haci_langsmith_3_agents.html">Agents</a>
+            <a href="haci_langsmith_4_observability.html">Observability</a>
+            <a href="haci_langsmith_5_harness_phases.html">Phases</a>
+            <a href="haci_langsmith_6_swarm.html">Swarm</a>
+            <a href="haci_langsmith_7_context.html">Context</a>
+            <a href="haci_langsmith_8_hitl.html">HITL</a>
+            <a href="haci_langsmith_9_testing.html" class="active">Testing</a>
+            <a href="haci_langsmith_10_deployment.html">Deploy</a>
+            <span class="page-indicator">9 of 10</span>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <h1>🧪 Testing & Evaluation</h1>
+        <p>Comprehensive testing strategies for HACI agents using LangSmith datasets, evaluators, and automated CI/CD pipelines</p>
+    </section>
+
+    <div class="stats-bar">
+        <div class="stat">
+            <div class="stat-value">3</div>
+            <div class="stat-label">Testing Layers</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">8</div>
+            <div class="stat-label">Eval Metrics</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">CI/CD</div>
+            <div class="stat-label">Automation</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">>95%</div>
+            <div class="stat-label">Target Coverage</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Section 1: Testing Strategy -->
+        <section class="section">
+            <h2 class="section-title">Testing Strategy Overview</h2>
+            
+            <p style="text-align: center; color: var(--gray-600); margin-bottom: 2rem; max-width: 800px; margin-left: auto; margin-right: auto;">
+                HACI testing combines traditional software testing with LLM-specific evaluation. LangSmith provides datasets, evaluators, and tracing to ensure agent reliability.
+            </p>
+
+            <div class="test-pyramid">
+                <h4 style="margin-bottom: 1.5rem; color: var(--gray-700);">HACI Testing Pyramid</h4>
+                <div class="pyramid-level e2e">E2E Agent Tests</div>
+                <div class="pyramid-label">Full workflow validation, production scenarios</div>
+                <div class="pyramid-level integration">Integration Tests</div>
+                <div class="pyramid-label">Multi-agent coordination, tool integrations, state persistence</div>
+                <div class="pyramid-level unit">Unit Tests</div>
+                <div class="pyramid-label">Individual nodes, harness phases, helper functions</div>
+            </div>
+
+            <div class="callout info">
+                <span class="callout-icon">💡</span>
+                <div>
+                    <h4>LLM Testing is Different</h4>
+                    <p>Unlike deterministic software, LLM outputs vary. Testing focuses on behavioral validation, output quality metrics, and regression detection rather than exact output matching.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Unit Testing -->
+        <section class="section">
+            <h2 class="section-title">Unit Testing Harness Phases</h2>
+
+            <p style="text-align: center; color: var(--gray-600); margin-bottom: 2rem;">
+                Test individual nodes in isolation by mocking LLM calls and validating state transitions.
+            </p>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-filename">test_harness_phases.py</span>
+                    <span class="code-lang">Python</span>
+                </div>
+                <div class="code-content">
+<pre><span class="keyword">import</span> pytest
+<span class="keyword">from</span> unittest.mock <span class="keyword">import</span> AsyncMock, patch
+<span class="keyword">from</span> haci.harness <span class="keyword">import</span> think_node, act_node, observe_node, evaluate_node
+<span class="keyword">from</span> haci.types <span class="keyword">import</span> HarnessState, Hypothesis, ToolResult, Decision
+
+<span class="comment"># Fixtures for test data</span>
+<span class="decorator">@pytest.fixture</span>
+<span class="keyword">def</span> <span class="function">initial_state</span>() -> HarnessState:
+    <span class="keyword">return</span> {
+        <span class="string">"messages"</span>: [{<span class="string">"role"</span>: <span class="string">"user"</span>, <span class="string">"content"</span>: <span class="string">"API latency increased 5x"</span>}],
+        <span class="string">"hypotheses"</span>: [],
+        <span class="string">"tool_results"</span>: [],
+        <span class="string">"observations"</span>: [],
+        <span class="string">"iteration"</span>: <span class="number">0</span>,
+        <span class="string">"max_iterations"</span>: <span class="number">5</span>,
+        <span class="string">"confidence_threshold"</span>: <span class="number">0.85</span>
+    }
+
+<span class="decorator">@pytest.fixture</span>
+<span class="keyword">def</span> <span class="function">mock_llm_response</span>():
+    <span class="keyword">return</span> {
+        <span class="string">"hypotheses"</span>: [
+            Hypothesis(
+                description=<span class="string">"Database connection pool exhausted"</span>,
+                confidence=<span class="number">0.7</span>,
+                evidence_needed=[<span class="string">"db connection count"</span>, <span class="string">"pool config"</span>],
+                validation_tools=[<span class="string">"query_database_metrics"</span>]
+            )
+        ],
+        <span class="string">"investigation_plan"</span>: [<span class="string">"query_database_metrics"</span>, <span class="string">"check_logs"</span>],
+        <span class="string">"next_tools"</span>: [<span class="string">"query_database_metrics"</span>]
+    }
+
+
+<span class="keyword">class</span> <span class="class">TestThinkNode</span>:
+    <span class="string">"""Tests for THINK phase."""</span>
+    
+    <span class="decorator">@pytest.mark.asyncio</span>
+    <span class="keyword">async</span> <span class="keyword">def</span> <span class="function">test_generates_hypotheses</span>(self, initial_state, mock_llm_response):
+        <span class="string">"""THINK node should generate at least one hypothesis."""</span>
+        <span class="keyword">with</span> patch(<span class="string">"haci.harness.llm_with_structured_output"</span>) <span class="keyword">as</span> mock_llm:
+            mock_llm.return_value.ainvoke = AsyncMock(return_value=mock_llm_response)
+            
+            result = <span class="keyword">await</span> <span class="function">think_node</span>(initial_state)
+            
+            <span class="keyword">assert</span> len(result[<span class="string">"hypotheses"</span>]) >= <span class="number">1</span>
+            <span class="keyword">assert</span> <span class="keyword">all</span>(
+                isinstance(h, Hypothesis) <span class="keyword">for</span> h <span class="keyword">in</span> result[<span class="string">"hypotheses"</span>]
+            )
+    
+    <span class="decorator">@pytest.mark.asyncio</span>
+    <span class="keyword">async</span> <span class="keyword">def</span> <span class="function">test_creates_investigation_plan</span>(self, initial_state, mock_llm_response):
+        <span class="string">"""THINK node should create a tool execution plan."""</span>
+        <span class="keyword">with</span> patch(<span class="string">"haci.harness.llm_with_structured_output"</span>) <span class="keyword">as</span> mock_llm:
+            mock_llm.return_value.ainvoke = AsyncMock(return_value=mock_llm_response)
+            
+            result = <span class="keyword">await</span> <span class="function">think_node</span>(initial_state)
+            
+            <span class="keyword">assert</span> <span class="string">"investigation_plan"</span> <span class="keyword">in</span> result
+            <span class="keyword">assert</span> len(result[<span class="string">"investigation_plan"</span>]) > <span class="number">0</span>
+    
+    <span class="decorator">@pytest.mark.asyncio</span>
+    <span class="keyword">async</span> <span class="keyword">def</span> <span class="function">test_increments_iteration</span>(self, initial_state, mock_llm_response):
+        <span class="string">"""THINK node should increment iteration counter."""</span>
+        <span class="keyword">with</span> patch(<span class="string">"haci.harness.llm_with_structured_output"</span>) <span class="keyword">as</span> mock_llm:
+            mock_llm.return_value.ainvoke = AsyncMock(return_value=mock_llm_response)
+            
+            result = <span class="keyword">await</span> <span class="function">think_node</span>(initial_state)
+            
+            <span class="keyword">assert</span> result[<span class="string">"iteration"</span>] == initial_state[<span class="string">"iteration"</span>] + <span class="number">1</span>
+
+
+<span class="keyword">class</span> <span class="class">TestActNode</span>:
+    <span class="string">"""Tests for ACT phase."""</span>
+    
+    <span class="decorator">@pytest.mark.asyncio</span>
+    <span class="keyword">async</span> <span class="keyword">def</span> <span class="function">test_executes_tools</span>(self, initial_state):
+        <span class="string">"""ACT node should execute planned tools."""</span>
+        state = {
+            **initial_state,
+            <span class="string">"investigation_plan"</span>: [{<span class="string">"tool_name"</span>: <span class="string">"query_logs"</span>, <span class="string">"params"</span>: {}}]
+        }
+        
+        <span class="keyword">with</span> patch(<span class="string">"haci.harness.get_tool"</span>) <span class="keyword">as</span> mock_get_tool:
+            mock_tool = AsyncMock()
+            mock_tool.execute.return_value = {<span class="string">"logs"</span>: [<span class="string">"error line 1"</span>]}
+            mock_get_tool.return_value = mock_tool
+            
+            result = <span class="keyword">await</span> <span class="function">act_node</span>(state)
+            
+            <span class="keyword">assert</span> len(result[<span class="string">"tool_results"</span>]) == <span class="number">1</span>
+            mock_tool.execute.assert_called_once()
+    
+    <span class="decorator">@pytest.mark.asyncio</span>
+    <span class="keyword">async</span> <span class="keyword">def</span> <span class="function">test_handles_tool_errors_gracefully</span>(self, initial_state):
+        <span class="string">"""ACT node should capture tool errors without crashing."""</span>
+        state = {
+            **initial_state,
+            <span class="string">"investigation_plan"</span>: [{<span class="string">"tool_name"</span>: <span class="string">"failing_tool"</span>, <span class="string">"params"</span>: {}}]
+        }
+        
+        <span class="keyword">with</span> patch(<span class="string">"haci.harness.get_tool"</span>) <span class="keyword">as</span> mock_get_tool:
+            mock_tool = AsyncMock()
+            mock_tool.execute.side_effect = Exception(<span class="string">"Connection timeout"</span>)
+            mock_get_tool.return_value = mock_tool
+            
+            result = <span class="keyword">await</span> <span class="function">act_node</span>(state)
+            
+            <span class="keyword">assert</span> len(result[<span class="string">"tool_results"</span>]) == <span class="number">1</span>
+            <span class="keyword">assert</span> result[<span class="string">"tool_results"</span>][<span class="number">0</span>].error <span class="keyword">is</span> <span class="keyword">not</span> <span class="keyword">None</span>
+
+
+<span class="keyword">class</span> <span class="class">TestEvaluateNode</span>:
+    <span class="string">"""Tests for EVALUATE phase."""</span>
+    
+    <span class="decorator">@pytest.mark.asyncio</span>
+    <span class="keyword">async</span> <span class="keyword">def</span> <span class="function">test_completes_when_confident</span>(self, initial_state):
+        <span class="string">"""EVALUATE should return COMPLETE when confidence exceeds threshold."""</span>
+        state = {
+            **initial_state,
+            <span class="string">"hypotheses"</span>: [Hypothesis(
+                description=<span class="string">"Root cause found"</span>,
+                confidence=<span class="number">0.95</span>,  <span class="comment"># Above 0.85 threshold</span>
+                evidence_needed=[],
+                validation_tools=[]
+            )],
+            <span class="string">"observations"</span>: [{<span class="string">"supports"</span>: <span class="keyword">True</span>, <span class="string">"evidence"</span>: <span class="string">"confirmed"</span>}]
+        }
+        
+        result = <span class="keyword">await</span> <span class="function">evaluate_node</span>(state)
+        
+        <span class="keyword">assert</span> result[<span class="string">"decision"</span>] == Decision.COMPLETE
+    
+    <span class="decorator">@pytest.mark.asyncio</span>
+    <span class="keyword">async</span> <span class="keyword">def</span> <span class="function">test_continues_when_low_confidence</span>(self, initial_state):
+        <span class="string">"""EVALUATE should return CONTINUE when confidence is low."""</span>
+        state = {
+            **initial_state,
+            <span class="string">"hypotheses"</span>: [Hypothesis(
+                description=<span class="string">"Uncertain root cause"</span>,
+                confidence=<span class="number">0.5</span>,  <span class="comment"># Below threshold</span>
+                evidence_needed=[<span class="string">"more data"</span>],
+                validation_tools=[<span class="string">"another_tool"</span>]
+            )]
+        }
+        
+        result = <span class="keyword">await</span> <span class="function">evaluate_node</span>(state)
+        
+        <span class="keyword">assert</span> result[<span class="string">"decision"</span>] == Decision.CONTINUE
+    
+    <span class="decorator">@pytest.mark.asyncio</span>
+    <span class="keyword">async</span> <span class="keyword">def</span> <span class="function">test_escalates_on_max_iterations</span>(self, initial_state):
+        <span class="string">"""EVALUATE should ESCALATE when max iterations reached."""</span>
+        state = {
+            **initial_state,
+            <span class="string">"iteration"</span>: <span class="number">5</span>,  <span class="comment"># At max</span>
+            <span class="string">"max_iterations"</span>: <span class="number">5</span>,
+            <span class="string">"hypotheses"</span>: [Hypothesis(
+                description=<span class="string">"Still investigating"</span>,
+                confidence=<span class="number">0.6</span>,
+                evidence_needed=[<span class="string">"more"</span>],
+                validation_tools=[]
+            )]
+        }
+        
+        result = <span class="keyword">await</span> <span class="function">evaluate_node</span>(state)
+        
+        <span class="keyword">assert</span> result[<span class="string">"decision"</span>] == Decision.ESCALATE</pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: LangSmith Datasets -->
+        <section class="section">
+            <h2 class="section-title">LangSmith Evaluation Datasets</h2>
+
+            <p style="text-align: center; color: var(--gray-600); margin-bottom: 2rem;">
+                Create curated datasets of example tickets, expected behaviors, and ground truth for systematic evaluation.
+            </p>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-filename">create_eval_dataset.py</span>
+                    <span class="code-lang">Python</span>
+                </div>
+                <div class="code-content">
+<pre><span class="keyword">from</span> langsmith <span class="keyword">import</span> Client
+<span class="keyword">from</span> langsmith.schemas <span class="keyword">import</span> Example
+
+client = Client()
+
+<span class="comment"># Create evaluation dataset</span>
+dataset = client.create_dataset(
+    dataset_name=<span class="string">"haci-support-tickets-v1"</span>,
+    description=<span class="string">"HACI evaluation dataset: support tickets with expected diagnoses"</span>
+)
+
+<span class="comment"># Example tickets with ground truth</span>
+examples = [
+    {
+        <span class="string">"input"</span>: {
+            <span class="string">"ticket_content"</span>: <span class="string">"API response times increased from 200ms to 3s over the past hour"</span>,
+            <span class="string">"severity"</span>: <span class="string">"high"</span>,
+            <span class="string">"customer_tier"</span>: <span class="string">"enterprise"</span>
+        },
+        <span class="string">"expected_output"</span>: {
+            <span class="string">"root_cause_category"</span>: <span class="string">"database"</span>,
+            <span class="string">"expected_tools"</span>: [<span class="string">"query_database_metrics"</span>, <span class="string">"check_connection_pool"</span>],
+            <span class="string">"min_confidence"</span>: <span class="number">0.7</span>,
+            <span class="string">"requires_human_approval"</span>: <span class="keyword">True</span>
+        }
+    },
+    {
+        <span class="string">"input"</span>: {
+            <span class="string">"ticket_content"</span>: <span class="string">"Users getting 403 errors when accessing dashboard"</span>,
+            <span class="string">"severity"</span>: <span class="string">"critical"</span>,
+            <span class="string">"customer_tier"</span>: <span class="string">"enterprise"</span>
+        },
+        <span class="string">"expected_output"</span>: {
+            <span class="string">"root_cause_category"</span>: <span class="string">"authentication"</span>,
+            <span class="string">"expected_tools"</span>: [<span class="string">"check_auth_logs"</span>, <span class="string">"verify_permissions"</span>],
+            <span class="string">"min_confidence"</span>: <span class="number">0.8</span>,
+            <span class="string">"requires_human_approval"</span>: <span class="keyword">True</span>
+        }
+    },
+    {
+        <span class="string">"input"</span>: {
+            <span class="string">"ticket_content"</span>: <span class="string">"How do I reset my password?"</span>,
+            <span class="string">"severity"</span>: <span class="string">"low"</span>,
+            <span class="string">"customer_tier"</span>: <span class="string">"free"</span>
+        },
+        <span class="string">"expected_output"</span>: {
+            <span class="string">"root_cause_category"</span>: <span class="string">"documentation"</span>,
+            <span class="string">"expected_tools"</span>: [<span class="string">"search_knowledge_base"</span>],
+            <span class="string">"min_confidence"</span>: <span class="number">0.9</span>,
+            <span class="string">"requires_human_approval"</span>: <span class="keyword">False</span>
+        }
+    }
+]
+
+<span class="comment"># Add examples to dataset</span>
+<span class="keyword">for</span> example <span class="keyword">in</span> examples:
+    client.create_example(
+        inputs=example[<span class="string">"input"</span>],
+        outputs=example[<span class="string">"expected_output"</span>],
+        dataset_id=dataset.id
+    )
+
+print(<span class="string">f"Created dataset with {len(examples)} examples"</span>)</pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Custom Evaluators -->
+        <section class="section">
+            <h2 class="section-title">Custom LangSmith Evaluators</h2>
+
+            <p style="text-align: center; color: var(--gray-600); margin-bottom: 2rem;">
+                Build HACI-specific evaluators to measure agent quality across multiple dimensions.
+            </p>
+
+            <div class="cards-grid">
+                <div class="feature-card">
+                    <h4>🎯 Root Cause Accuracy</h4>
+                    <p>Does the agent identify the correct category of root cause? Measures diagnostic accuracy.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>🔧 Tool Selection</h4>
+                    <p>Does the agent use appropriate tools? Validates investigation strategy.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>📊 Confidence Calibration</h4>
+                    <p>Are confidence scores accurate? High confidence should correlate with correct answers.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>⚖️ Autonomy Appropriateness</h4>
+                    <p>Does the agent escalate when expected? Validates HITL decision logic.</p>
+                </div>
+            </div>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-filename">haci_evaluators.py</span>
+                    <span class="code-lang">Python</span>
+                </div>
+                <div class="code-content">
+<pre><span class="keyword">from</span> langsmith.evaluation <span class="keyword">import</span> evaluate, EvaluationResult
+<span class="keyword">from</span> langsmith.schemas <span class="keyword">import</span> Run, Example
+<span class="keyword">from</span> typing <span class="keyword">import</span> Optional
+
+<span class="keyword">def</span> <span class="function">root_cause_accuracy</span>(run: Run, example: Example) -> EvaluationResult:
+    <span class="string">"""
+    Evaluate if agent identified the correct root cause category.
+    """</span>
+    expected = example.outputs[<span class="string">"root_cause_category"</span>]
+    actual = run.outputs.get(<span class="string">"finding"</span>, {}).get(<span class="string">"category"</span>, <span class="string">""</span>)
+    
+    <span class="comment"># Exact match</span>
+    score = <span class="number">1.0</span> <span class="keyword">if</span> actual.lower() == expected.lower() <span class="keyword">else</span> <span class="number">0.0</span>
+    
+    <span class="keyword">return</span> EvaluationResult(
+        key=<span class="string">"root_cause_accuracy"</span>,
+        score=score,
+        comment=<span class="string">f"Expected: {expected}, Got: {actual}"</span>
+    )
+
+<span class="keyword">def</span> <span class="function">tool_selection_score</span>(run: Run, example: Example) -> EvaluationResult:
+    <span class="string">"""
+    Evaluate if agent used the expected tools (partial credit).
+    """</span>
+    expected_tools = set(example.outputs.get(<span class="string">"expected_tools"</span>, []))
+    actual_tools = set(run.outputs.get(<span class="string">"tools_used"</span>, []))
+    
+    <span class="keyword">if</span> <span class="keyword">not</span> expected_tools:
+        <span class="keyword">return</span> EvaluationResult(key=<span class="string">"tool_selection"</span>, score=<span class="number">1.0</span>)
+    
+    <span class="comment"># Jaccard similarity</span>
+    intersection = len(expected_tools & actual_tools)
+    union = len(expected_tools | actual_tools)
+    score = intersection / union <span class="keyword">if</span> union > <span class="number">0</span> <span class="keyword">else</span> <span class="number">0.0</span>
+    
+    <span class="keyword">return</span> EvaluationResult(
+        key=<span class="string">"tool_selection"</span>,
+        score=score,
+        comment=<span class="string">f"Expected: {expected_tools}, Used: {actual_tools}"</span>
+    )
+
+<span class="keyword">def</span> <span class="function">confidence_calibration</span>(run: Run, example: Example) -> EvaluationResult:
+    <span class="string">"""
+    Evaluate if confidence scores are calibrated.
+    High confidence + wrong answer = penalty
+    Low confidence + right answer = small penalty
+    """</span>
+    confidence = run.outputs.get(<span class="string">"finding"</span>, {}).get(<span class="string">"confidence"</span>, <span class="number">0.5</span>)
+    min_expected = example.outputs.get(<span class="string">"min_confidence"</span>, <span class="number">0.5</span>)
+    
+    <span class="comment"># Check if answer was correct</span>
+    root_cause_correct = (
+        run.outputs.get(<span class="string">"finding"</span>, {}).get(<span class="string">"category"</span>, <span class="string">""</span>).lower() ==
+        example.outputs.get(<span class="string">"root_cause_category"</span>, <span class="string">""</span>).lower()
+    )
+    
+    <span class="keyword">if</span> root_cause_correct:
+        <span class="comment"># Reward high confidence when correct</span>
+        score = min(confidence / min_expected, <span class="number">1.0</span>)
+    <span class="keyword">else</span>:
+        <span class="comment"># Penalize high confidence when wrong</span>
+        score = max(<span class="number">0.0</span>, <span class="number">1.0</span> - confidence)
+    
+    <span class="keyword">return</span> EvaluationResult(
+        key=<span class="string">"confidence_calibration"</span>,
+        score=score,
+        comment=<span class="string">f"Confidence: {confidence:.2f}, Correct: {root_cause_correct}"</span>
+    )
+
+<span class="keyword">def</span> <span class="function">autonomy_appropriateness</span>(run: Run, example: Example) -> EvaluationResult:
+    <span class="string">"""
+    Evaluate if agent made correct HITL decisions.
+    """</span>
+    expected_hitl = example.outputs.get(<span class="string">"requires_human_approval"</span>, <span class="keyword">False</span>)
+    actual_hitl = run.outputs.get(<span class="string">"required_human_approval"</span>, <span class="keyword">False</span>)
+    
+    <span class="keyword">if</span> expected_hitl == actual_hitl:
+        score = <span class="number">1.0</span>
+        comment = <span class="string">"Correct HITL decision"</span>
+    <span class="keyword">elif</span> actual_hitl <span class="keyword">and</span> <span class="keyword">not</span> expected_hitl:
+        <span class="comment"># Over-cautious is better than under-cautious</span>
+        score = <span class="number">0.7</span>
+        comment = <span class="string">"Unnecessary escalation (conservative)"</span>
+    <span class="keyword">else</span>:
+        <span class="comment"># Under-cautious is bad</span>
+        score = <span class="number">0.0</span>
+        comment = <span class="string">"Failed to escalate when required"</span>
+    
+    <span class="keyword">return</span> EvaluationResult(
+        key=<span class="string">"autonomy_appropriateness"</span>,
+        score=score,
+        comment=comment
+    )
+
+<span class="comment"># LLM-as-judge evaluator for response quality</span>
+<span class="keyword">def</span> <span class="function">response_quality_llm_judge</span>(run: Run, example: Example) -> EvaluationResult:
+    <span class="string">"""
+    Use an LLM to judge the quality of the agent's response.
+    """</span>
+    <span class="keyword">from</span> langchain_anthropic <span class="keyword">import</span> ChatAnthropic
+    
+    judge_llm = ChatAnthropic(model=<span class="string">"claude-sonnet-4-20250514"</span>)
+    
+    prompt = <span class="string">f"""Evaluate this support ticket response:
+
+TICKET: {example.inputs['ticket_content']}
+
+AGENT RESPONSE:
+Root Cause: {run.outputs.get('finding', {}).get('root_cause', 'N/A')}
+Confidence: {run.outputs.get('finding', {}).get('confidence', 'N/A')}
+Recommended Actions: {run.outputs.get('finding', {}).get('recommended_actions', [])}
+
+Rate the response quality from 0-10 considering:
+1. Clarity of explanation
+2. Actionability of recommendations
+3. Appropriate level of detail
+4. Professional tone
+
+Respond with just the numeric score."""</span>
+    
+    response = judge_llm.invoke(prompt)
+    score = float(response.content.strip()) / <span class="number">10.0</span>
+    
+    <span class="keyword">return</span> EvaluationResult(
+        key=<span class="string">"response_quality"</span>,
+        score=score,
+        comment=<span class="string">f"LLM judge score: {score * 10}/10"</span>
+    )</pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: Running Evaluations -->
+        <section class="section">
+            <h2 class="section-title">Running Evaluations</h2>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-filename">run_evaluation.py</span>
+                    <span class="code-lang">Python</span>
+                </div>
+                <div class="code-content">
+<pre><span class="keyword">from</span> langsmith.evaluation <span class="keyword">import</span> evaluate
+<span class="keyword">from</span> haci.workflow <span class="keyword">import</span> build_haci_workflow
+<span class="keyword">from</span> haci_evaluators <span class="keyword">import</span> (
+    root_cause_accuracy,
+    tool_selection_score,
+    confidence_calibration,
+    autonomy_appropriateness,
+    response_quality_llm_judge
+)
+
+<span class="comment"># Target function: the HACI agent to evaluate</span>
+<span class="keyword">async</span> <span class="keyword">def</span> <span class="function">haci_agent_target</span>(inputs: dict) -> dict:
+    <span class="string">"""Run HACI workflow on input ticket."""</span>
+    workflow = <span class="function">build_haci_workflow</span>()
+    
+    result = <span class="keyword">await</span> workflow.ainvoke({
+        <span class="string">"messages"</span>: [{<span class="string">"role"</span>: <span class="string">"user"</span>, <span class="string">"content"</span>: inputs[<span class="string">"ticket_content"</span>]}],
+        <span class="string">"ticket_metadata"</span>: {
+            <span class="string">"severity"</span>: inputs.get(<span class="string">"severity"</span>, <span class="string">"medium"</span>),
+            <span class="string">"customer_tier"</span>: inputs.get(<span class="string">"customer_tier"</span>, <span class="string">"standard"</span>)
+        }
+    })
+    
+    <span class="keyword">return</span> {
+        <span class="string">"finding"</span>: result.get(<span class="string">"finding"</span>),
+        <span class="string">"tools_used"</span>: [tr[<span class="string">"tool_name"</span>] <span class="keyword">for</span> tr <span class="keyword">in</span> result.get(<span class="string">"tool_results"</span>, [])],
+        <span class="string">"required_human_approval"</span>: result.get(<span class="string">"requires_human_approval"</span>, <span class="keyword">False</span>),
+        <span class="string">"iterations"</span>: result.get(<span class="string">"iteration"</span>, <span class="number">0</span>)
+    }
+
+<span class="comment"># Run evaluation</span>
+results = evaluate(
+    haci_agent_target,
+    data=<span class="string">"haci-support-tickets-v1"</span>,  <span class="comment"># Dataset name</span>
+    evaluators=[
+        root_cause_accuracy,
+        tool_selection_score,
+        confidence_calibration,
+        autonomy_appropriateness,
+        response_quality_llm_judge
+    ],
+    experiment_prefix=<span class="string">"haci-eval"</span>,
+    max_concurrency=<span class="number">4</span>,  <span class="comment"># Parallel evaluation</span>
+    metadata={
+        <span class="string">"model"</span>: <span class="string">"claude-sonnet-4-20250514"</span>,
+        <span class="string">"version"</span>: <span class="string">"1.2.0"</span>
+    }
+)
+
+<span class="comment"># Print summary</span>
+print(<span class="string">"Evaluation Results:"</span>)
+print(<span class="string">f"  Root Cause Accuracy: {results.summary['root_cause_accuracy']:.2%}"</span>)
+print(<span class="string">f"  Tool Selection: {results.summary['tool_selection']:.2%}"</span>)
+print(<span class="string">f"  Confidence Calibration: {results.summary['confidence_calibration']:.2%}"</span>)
+print(<span class="string">f"  Autonomy Appropriateness: {results.summary['autonomy_appropriateness']:.2%}"</span>)
+print(<span class="string">f"  Response Quality: {results.summary['response_quality']:.2%}"</span>)</pre>
+                </div>
+            </div>
+
+            <div class="metric-grid">
+                <div class="metric-card">
+                    <div class="value">>90%</div>
+                    <div class="label">Root Cause Accuracy</div>
+                    <div class="threshold">Target threshold</div>
+                </div>
+                <div class="metric-card">
+                    <div class="value">>85%</div>
+                    <div class="label">Tool Selection</div>
+                    <div class="threshold">Target threshold</div>
+                </div>
+                <div class="metric-card">
+                    <div class="value">>80%</div>
+                    <div class="label">Confidence Calibration</div>
+                    <div class="threshold">Target threshold</div>
+                </div>
+                <div class="metric-card">
+                    <div class="value">100%</div>
+                    <div class="label">Autonomy Safety</div>
+                    <div class="threshold">Must not under-escalate</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 6: CI/CD Integration -->
+        <section class="section">
+            <h2 class="section-title">CI/CD Integration</h2>
+
+            <p style="text-align: center; color: var(--gray-600); margin-bottom: 2rem;">
+                Automate evaluation in your CI/CD pipeline to catch regressions before deployment.
+            </p>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-filename">.github/workflows/haci-eval.yml</span>
+                    <span class="code-lang">YAML</span>
+                </div>
+                <div class="code-content">
+<pre><span class="keyword">name:</span> HACI Agent Evaluation
+
+<span class="keyword">on:</span>
+  <span class="keyword">pull_request:</span>
+    <span class="keyword">branches:</span> [main]
+  <span class="keyword">push:</span>
+    <span class="keyword">branches:</span> [main]
+
+<span class="keyword">env:</span>
+  <span class="string">LANGCHAIN_API_KEY</span>: ${{ secrets.LANGCHAIN_API_KEY }}
+  <span class="string">LANGCHAIN_PROJECT</span>: <span class="string">"haci-ci-eval"</span>
+  <span class="string">ANTHROPIC_API_KEY</span>: ${{ secrets.ANTHROPIC_API_KEY }}
+
+<span class="keyword">jobs:</span>
+  <span class="keyword">evaluate:</span>
+    <span class="keyword">runs-on:</span> ubuntu-latest
+    <span class="keyword">steps:</span>
+      - <span class="keyword">uses:</span> actions/checkout@v4
+      
+      - <span class="keyword">name:</span> Set up Python
+        <span class="keyword">uses:</span> actions/setup-python@v5
+        <span class="keyword">with:</span>
+          <span class="keyword">python-version:</span> <span class="string">'3.11'</span>
+      
+      - <span class="keyword">name:</span> Install dependencies
+        <span class="keyword">run:</span> |
+          pip install -r requirements.txt
+          pip install langsmith pytest pytest-asyncio
+      
+      - <span class="keyword">name:</span> Run Unit Tests
+        <span class="keyword">run:</span> pytest tests/unit -v --tb=short
+      
+      - <span class="keyword">name:</span> Run LangSmith Evaluation
+        <span class="keyword">id:</span> eval
+        <span class="keyword">run:</span> |
+          python -m haci.evaluation.run_ci_eval \
+            --dataset haci-support-tickets-v1 \
+            --thresholds-file eval_thresholds.json \
+            --output-file eval_results.json
+      
+      - <span class="keyword">name:</span> Check Thresholds
+        <span class="keyword">run:</span> |
+          python -c "
+          import json
+          with open('eval_results.json') as f:
+              results = json.load(f)
+          
+          thresholds = {
+              'root_cause_accuracy': 0.90,
+              'tool_selection': 0.85,
+              'confidence_calibration': 0.80,
+              'autonomy_appropriateness': 1.0  # No under-escalation
+          }
+          
+          failed = []
+          for metric, threshold in thresholds.items():
+              actual = results['summary'].get(metric, 0)
+              if actual < threshold:
+                  failed.append(f'{metric}: {actual:.2%} < {threshold:.2%}')
+          
+          if failed:
+              print('❌ Evaluation failed:')
+              for f in failed:
+                  print(f'  - {f}')
+              exit(1)
+          else:
+              print('✅ All evaluation thresholds passed!')
+          "
+      
+      - <span class="keyword">name:</span> Upload Results to LangSmith
+        <span class="keyword">if:</span> always()
+        <span class="keyword">run:</span> |
+          python -m haci.evaluation.upload_results \
+            --results-file eval_results.json \
+            --commit ${{ github.sha }} \
+            --pr ${{ github.event.pull_request.number || 'main' }}
+      
+      - <span class="keyword">name:</span> Comment PR with Results
+        <span class="keyword">if:</span> github.event_name == 'pull_request'
+        <span class="keyword">uses:</span> actions/github-script@v7
+        <span class="keyword">with:</span>
+          <span class="keyword">script:</span> |
+            const fs = require('fs');
+            const results = JSON.parse(fs.readFileSync('eval_results.json'));
+            
+            const body = `## 🧪 HACI Evaluation Results
+            
+            | Metric | Score | Threshold | Status |
+            |--------|-------|-----------|--------|
+            | Root Cause Accuracy | ${(results.summary.root_cause_accuracy * 100).toFixed(1)}% | 90% | ${results.summary.root_cause_accuracy >= 0.9 ? '✅' : '❌'} |
+            | Tool Selection | ${(results.summary.tool_selection * 100).toFixed(1)}% | 85% | ${results.summary.tool_selection >= 0.85 ? '✅' : '❌'} |
+            | Confidence Calibration | ${(results.summary.confidence_calibration * 100).toFixed(1)}% | 80% | ${results.summary.confidence_calibration >= 0.8 ? '✅' : '❌'} |
+            | Autonomy Safety | ${(results.summary.autonomy_appropriateness * 100).toFixed(1)}% | 100% | ${results.summary.autonomy_appropriateness >= 1.0 ? '✅' : '❌'} |
+            
+            [View full results in LangSmith](${results.langsmith_url})
+            `;
+            
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body
+            });</pre>
+                </div>
+            </div>
+
+            <div class="callout success">
+                <span class="callout-icon">✅</span>
+                <div>
+                    <h4>Regression Detection</h4>
+                    <p>Every PR automatically runs the full evaluation suite. Regressions are caught before merge, and results are tracked over time in LangSmith for trend analysis.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 7: Integration Testing -->
+        <section class="section">
+            <h2 class="section-title">Integration Testing</h2>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-filename">test_integration.py</span>
+                    <span class="code-lang">Python</span>
+                </div>
+                <div class="code-content">
+<pre><span class="keyword">import</span> pytest
+<span class="keyword">from</span> langsmith <span class="keyword">import</span> unit
+<span class="keyword">from</span> haci.workflow <span class="keyword">import</span> build_haci_workflow, build_swarm_workflow
+
+<span class="keyword">class</span> <span class="class">TestHarnessPipeline</span>:
+    <span class="string">"""Integration tests for full harness pipeline."""</span>
+    
+    <span class="decorator">@pytest.mark.asyncio</span>
+    <span class="decorator">@unit</span>  <span class="comment"># LangSmith unit test decorator</span>
+    <span class="keyword">async</span> <span class="keyword">def</span> <span class="function">test_full_investigation_flow</span>(self):
+        <span class="string">"""Test complete THINK→ACT→OBSERVE→EVALUATE cycle."""</span>
+        workflow = <span class="function">build_haci_workflow</span>()
+        
+        result = <span class="keyword">await</span> workflow.ainvoke({
+            <span class="string">"messages"</span>: [{
+                <span class="string">"role"</span>: <span class="string">"user"</span>,
+                <span class="string">"content"</span>: <span class="string">"Database queries are timing out"</span>
+            }]
+        })
+        
+        <span class="comment"># Verify state progression</span>
+        <span class="keyword">assert</span> result[<span class="string">"iteration"</span>] >= <span class="number">1</span>, <span class="string">"Should complete at least one iteration"</span>
+        <span class="keyword">assert</span> len(result[<span class="string">"hypotheses"</span>]) > <span class="number">0</span>, <span class="string">"Should generate hypotheses"</span>
+        <span class="keyword">assert</span> len(result[<span class="string">"tool_results"</span>]) > <span class="number">0</span>, <span class="string">"Should execute tools"</span>
+        <span class="keyword">assert</span> result.get(<span class="string">"finding"</span>) <span class="keyword">is</span> <span class="keyword">not</span> <span class="keyword">None</span>, <span class="string">"Should produce finding"</span>
+    
+    <span class="decorator">@pytest.mark.asyncio</span>
+    <span class="decorator">@unit</span>
+    <span class="keyword">async</span> <span class="keyword">def</span> <span class="function">test_swarm_coordination</span>(self):
+        <span class="string">"""Test multi-agent swarm produces synthesized result."""</span>
+        workflow = <span class="function">build_swarm_workflow</span>()
+        
+        result = <span class="keyword">await</span> workflow.ainvoke({
+            <span class="string">"messages"</span>: [{
+                <span class="string">"role"</span>: <span class="string">"user"</span>,
+                <span class="string">"content"</span>: <span class="string">"Production API returning 500 errors"</span>
+            }],
+            <span class="string">"swarm_mode"</span>: <span class="string">"full"</span>
+        })
+        
+        <span class="comment"># Verify all agents contributed</span>
+        agent_ids = {f[<span class="string">"agent_id"</span>] <span class="keyword">for</span> f <span class="keyword">in</span> result.get(<span class="string">"agent_findings"</span>, [])}
+        expected_agents = {<span class="string">"log_agent"</span>, <span class="string">"code_agent"</span>, <span class="string">"infra_agent"</span>}
+        <span class="keyword">assert</span> expected_agents.issubset(agent_ids), <span class="string">"Expected agents should contribute"</span>
+        
+        <span class="comment"># Verify synthesis</span>
+        <span class="keyword">assert</span> result.get(<span class="string">"synthesized_root_cause"</span>), <span class="string">"Should produce synthesized conclusion"</span>
+    
+    <span class="decorator">@pytest.mark.asyncio</span>
+    <span class="decorator">@unit</span>
+    <span class="keyword">async</span> <span class="keyword">def</span> <span class="function">test_checkpoint_resume</span>(self):
+        <span class="string">"""Test state persistence and resume capability."""</span>
+        <span class="keyword">from</span> langgraph.checkpoint.memory <span class="keyword">import</span> MemorySaver
+        
+        checkpointer = MemorySaver()
+        workflow = <span class="function">build_haci_workflow</span>(checkpointer=checkpointer)
+        
+        thread_id = <span class="string">"test-checkpoint-123"</span>
+        config = {<span class="string">"configurable"</span>: {<span class="string">"thread_id"</span>: thread_id}}
+        
+        <span class="comment"># Start investigation</span>
+        result1 = <span class="keyword">await</span> workflow.ainvoke(
+            {<span class="string">"messages"</span>: [{<span class="string">"role"</span>: <span class="string">"user"</span>, <span class="string">"content"</span>: <span class="string">"Memory leak detected"</span>}]},
+            config=config
+        )
+        
+        <span class="comment"># Get checkpoint state</span>
+        state = <span class="keyword">await</span> workflow.aget_state(config)
+        <span class="keyword">assert</span> state.values[<span class="string">"iteration"</span>] > <span class="number">0</span>
+        
+        <span class="comment"># Resume from checkpoint</span>
+        result2 = <span class="keyword">await</span> workflow.ainvoke(<span class="keyword">None</span>, config=config)
+        <span class="keyword">assert</span> result2[<span class="string">"iteration"</span>] >= result1[<span class="string">"iteration"</span>], <span class="string">"Should continue from checkpoint"</span></pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Navigation Footer -->
+        <nav class="nav-footer">
+            <a href="haci_langsmith_8_hitl.html" class="nav-btn">
+                <span>←</span>
+                <div>
+                    <div class="nav-btn-label">Previous</div>
+                    <div class="nav-btn-title">Human-in-the-Loop</div>
+                </div>
+            </a>
+            <a href="haci_langsmith_10_deployment.html" class="nav-btn">
+                <div>
+                    <div class="nav-btn-label">Next</div>
+                    <div class="nav-btn-title">Deployment</div>
+                </div>
+                <span>→</span>
+            </a>
+        </nav>
+    </div>
+
+    <footer>
+        <p><strong>HACI on LangSmith</strong> - Implementation Guide</p>
+        <p>Testing & Evaluation • Quality Assurance • CI/CD Automation</p>
+    </footer>
+</body>
+</html>

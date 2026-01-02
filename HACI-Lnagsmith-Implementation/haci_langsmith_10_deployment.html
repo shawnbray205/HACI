@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HACI on LangSmith - Deployment</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --secondary: #7c3aed;
+            --success: #059669;
+            --warning: #d97706;
+            --info: #0891b2;
+            --langchain-green: #10b981;
+            --deploy-emerald: #059669;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: var(--gray-800); background: var(--gray-50); }
+
+        .nav { position: sticky; top: 0; background: white; border-bottom: 1px solid var(--gray-200); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; z-index: 100; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .nav-brand { font-weight: 700; font-size: 1.25rem; color: var(--gray-900); }
+        .nav-brand span { color: var(--deploy-emerald); }
+        .nav-links { display: flex; gap: 0.5rem; align-items: center; }
+        .nav-links a { color: var(--gray-600); text-decoration: none; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.875rem; transition: all 0.2s; }
+        .nav-links a:hover { background: var(--gray-100); color: var(--gray-900); }
+        .nav-links a.active { background: linear-gradient(135deg, var(--deploy-emerald), var(--primary)); color: white; }
+        .page-indicator { background: var(--gray-100); padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; color: var(--gray-600); }
+
+        .hero { background: linear-gradient(135deg, var(--deploy-emerald), var(--primary), var(--langchain-green)); color: white; padding: 4rem 2rem; text-align: center; }
+        .hero h1 { font-size: 2.5rem; margin-bottom: 1rem; font-weight: 800; }
+        .hero p { font-size: 1.25rem; opacity: 0.95; max-width: 700px; margin: 0 auto; }
+
+        .stats-bar { background: white; border-bottom: 1px solid var(--gray-200); padding: 1.5rem 2rem; display: flex; justify-content: center; gap: 4rem; flex-wrap: wrap; }
+        .stat { text-align: center; }
+        .stat-value { font-size: 1.75rem; font-weight: 700; color: var(--deploy-emerald); }
+        .stat-label { font-size: 0.875rem; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.05em; }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 3rem 2rem; }
+        .section { margin-bottom: 4rem; }
+        .section-title { font-size: 1.75rem; font-weight: 700; color: var(--gray-900); margin-bottom: 1.5rem; padding-bottom: 0.75rem; border-bottom: 3px solid var(--gray-200); position: relative; text-align: center; }
+        .section-title::after { content: ''; position: absolute; bottom: -3px; left: 50%; transform: translateX(-50%); width: 60px; height: 3px; background: linear-gradient(90deg, var(--deploy-emerald), var(--primary)); }
+
+        .code-block { background: #1e1e1e; border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+        .code-header { background: #2d2d2d; padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #404040; }
+        .code-filename { color: #9ca3af; font-size: 0.875rem; font-family: 'Fira Code', monospace; }
+        .code-lang { color: #10b981; font-size: 0.75rem; padding: 0.25rem 0.5rem; background: rgba(16,185,129,0.1); border-radius: 4px; }
+        .code-content { padding: 1.5rem; overflow-x: auto; }
+        pre { margin: 0; font-family: 'Fira Code', monospace; font-size: 0.875rem; line-height: 1.6; color: #e5e7eb; }
+        .keyword { color: #c586c0; }
+        .string { color: #ce9178; }
+        .function { color: #dcdcaa; }
+        .class { color: #4ec9b0; }
+        .comment { color: #6a9955; }
+        .decorator { color: #d7ba7d; }
+        .number { color: #b5cea8; }
+
+        .callout { padding: 1.25rem 1.5rem; border-radius: 12px; margin: 1.5rem 0; display: flex; gap: 1rem; }
+        .callout-icon { font-size: 1.5rem; flex-shrink: 0; }
+        .callout.info { background: linear-gradient(135deg, rgba(8,145,178,0.1), rgba(6,182,212,0.05)); border-left: 4px solid var(--info); }
+        .callout.success { background: linear-gradient(135deg, rgba(5,150,105,0.1), rgba(16,185,129,0.05)); border-left: 4px solid var(--success); }
+        .callout.warning { background: linear-gradient(135deg, rgba(217,119,6,0.1), rgba(245,158,11,0.05)); border-left: 4px solid var(--warning); }
+        .callout.tip { background: linear-gradient(135deg, rgba(5,150,105,0.1), rgba(5,150,105,0.05)); border-left: 4px solid var(--deploy-emerald); }
+        .callout h4 { font-weight: 600; margin-bottom: 0.5rem; color: var(--gray-800); }
+        .callout p { color: var(--gray-700); font-size: 0.9375rem; }
+
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin: 2rem 0; }
+        .feature-card { background: white; border-radius: 12px; padding: 1.5rem; border: 1px solid var(--gray-200); }
+        .feature-card h4 { color: var(--deploy-emerald); font-size: 1.125rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+        .feature-card p { color: var(--gray-600); font-size: 0.9375rem; margin-bottom: 0.75rem; }
+        .feature-card code { background: var(--gray-100); padding: 0.125rem 0.375rem; border-radius: 4px; font-size: 0.8125rem; }
+
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin: 1.5rem 0; }
+        th, td { padding: 1rem 1.25rem; text-align: left; border-bottom: 1px solid var(--gray-200); }
+        th { background: var(--gray-100); font-weight: 600; color: var(--gray-700); font-size: 0.875rem; text-transform: uppercase; }
+        td { color: var(--gray-700); font-size: 0.9375rem; }
+        tr:last-child td { border-bottom: none; }
+
+        .deploy-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin: 2rem 0; }
+        .deploy-option { background: white; border: 2px solid var(--gray-200); border-radius: 16px; padding: 2rem; text-align: center; transition: all 0.2s; }
+        .deploy-option:hover { border-color: var(--deploy-emerald); box-shadow: 0 8px 24px rgba(5,150,105,0.15); }
+        .deploy-option.recommended { border-color: var(--deploy-emerald); }
+        .deploy-option .badge { display: inline-block; background: var(--deploy-emerald); color: white; font-size: 0.75rem; padding: 0.25rem 0.75rem; border-radius: 9999px; margin-bottom: 1rem; }
+        .deploy-option h3 { font-size: 1.25rem; margin-bottom: 0.5rem; color: var(--gray-900); }
+        .deploy-option p { color: var(--gray-600); font-size: 0.875rem; margin-bottom: 1rem; }
+        .deploy-option .icon { font-size: 3rem; margin-bottom: 1rem; }
+
+        .architecture-diagram { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 2rem; margin: 2rem 0; }
+        .arch-row { display: flex; justify-content: center; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+        .arch-box { background: linear-gradient(135deg, var(--gray-100), white); border: 1px solid var(--gray-200); border-radius: 8px; padding: 1rem 1.5rem; text-align: center; min-width: 120px; }
+        .arch-box.primary { background: linear-gradient(135deg, var(--deploy-emerald), var(--success)); color: white; border: none; }
+        .arch-box.secondary { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; border: none; }
+        .arch-connector { color: var(--gray-400); font-size: 1.5rem; display: flex; align-items: center; }
+
+        .checklist { background: white; border-radius: 12px; padding: 1.5rem; border: 1px solid var(--gray-200); margin: 1.5rem 0; }
+        .checklist h4 { color: var(--gray-800); margin-bottom: 1rem; }
+        .checklist-item { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.5rem 0; border-bottom: 1px solid var(--gray-100); }
+        .checklist-item:last-child { border-bottom: none; }
+        .checklist-item .check { color: var(--deploy-emerald); font-size: 1.25rem; flex-shrink: 0; }
+        .checklist-item span { color: var(--gray-700); }
+
+        .nav-footer { display: flex; justify-content: space-between; padding: 2rem 0; margin-top: 2rem; border-top: 1px solid var(--gray-200); }
+        .nav-btn { display: flex; align-items: center; gap: 0.75rem; padding: 1rem 1.5rem; background: white; border: 1px solid var(--gray-200); border-radius: 12px; text-decoration: none; color: var(--gray-700); transition: all 0.2s; }
+        .nav-btn:hover { border-color: var(--primary); color: var(--primary); box-shadow: 0 4px 12px rgba(37,99,235,0.15); }
+        .nav-btn-label { font-size: 0.75rem; color: var(--gray-500); text-transform: uppercase; }
+        .nav-btn-title { font-weight: 600; }
+        .nav-btn.complete { background: linear-gradient(135deg, var(--deploy-emerald), var(--success)); color: white; border: none; }
+        .nav-btn.complete:hover { box-shadow: 0 4px 12px rgba(5,150,105,0.3); }
+
+        footer { background: var(--gray-900); color: var(--gray-400); padding: 2rem; text-align: center; font-size: 0.875rem; }
+        footer strong { color: white; }
+
+        @media (max-width: 768px) { .hero h1 { font-size: 2rem; } .stats-bar { gap: 2rem; } .nav-links { display: none; } .arch-row { flex-direction: column; align-items: center; } .arch-connector { transform: rotate(90deg); } }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-brand">HACI <span>LangSmith</span></div>
+        <div class="nav-links">
+            <a href="haci_langsmith_1_setup.html">Setup</a>
+            <a href="haci_langsmith_2_graph.html">Graph</a>
+            <a href="haci_langsmith_3_agents.html">Agents</a>
+            <a href="haci_langsmith_4_observability.html">Observability</a>
+            <a href="haci_langsmith_5_harness_phases.html">Phases</a>
+            <a href="haci_langsmith_6_swarm.html">Swarm</a>
+            <a href="haci_langsmith_7_context.html">Context</a>
+            <a href="haci_langsmith_8_hitl.html">HITL</a>
+            <a href="haci_langsmith_9_testing.html">Testing</a>
+            <a href="haci_langsmith_10_deployment.html" class="active">Deploy</a>
+            <span class="page-indicator">10 of 10</span>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <h1>🚀 Production Deployment</h1>
+        <p>Deploy HACI agents to production with LangGraph Platform, containerization, scaling, and monitoring best practices</p>
+    </section>
+
+    <div class="stats-bar">
+        <div class="stat">
+            <div class="stat-value">3</div>
+            <div class="stat-label">Deploy Options</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">99.9%</div>
+            <div class="stat-label">Target Uptime</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">&lt;2s</div>
+            <div class="stat-label">P95 Latency</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">∞</div>
+            <div class="stat-label">Auto-Scale</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Section 1: Deployment Options -->
+        <section class="section">
+            <h2 class="section-title">Deployment Options</h2>
+
+            <div class="deploy-options">
+                <div class="deploy-option recommended">
+                    <span class="badge">Recommended</span>
+                    <div class="icon">☁️</div>
+                    <h3>LangGraph Platform</h3>
+                    <p>Managed deployment with built-in scaling, monitoring, and LangSmith integration. Zero infrastructure management.</p>
+                </div>
+                <div class="deploy-option">
+                    <div class="icon">🐳</div>
+                    <h3>Self-Hosted Docker</h3>
+                    <p>Deploy to your own infrastructure using Docker and Kubernetes. Full control, bring your own observability.</p>
+                </div>
+                <div class="deploy-option">
+                    <div class="icon">⚡</div>
+                    <h3>Serverless</h3>
+                    <p>Deploy as serverless functions on AWS Lambda, Google Cloud Functions, or Azure Functions. Pay per invocation.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: LangGraph Platform -->
+        <section class="section">
+            <h2 class="section-title">LangGraph Platform Deployment</h2>
+
+            <p style="text-align: center; color: var(--gray-600); margin-bottom: 2rem; max-width: 800px; margin-left: auto; margin-right: auto;">
+                LangGraph Platform provides managed infrastructure purpose-built for stateful, long-running agent workflows. Includes automatic scaling, persistence, and deep LangSmith integration.
+            </p>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-filename">langgraph.json</span>
+                    <span class="code-lang">JSON</span>
+                </div>
+                <div class="code-content">
+<pre>{
+  <span class="string">"name"</span>: <span class="string">"haci-agent"</span>,
+  <span class="string">"version"</span>: <span class="string">"1.0.0"</span>,
+  <span class="string">"graphs"</span>: {
+    <span class="string">"harness"</span>: <span class="string">"./haci/workflow.py:harness_graph"</span>,
+    <span class="string">"swarm"</span>: <span class="string">"./haci/workflow.py:swarm_graph"</span>
+  },
+  <span class="string">"dependencies"</span>: [<span class="string">"."</span>],
+  <span class="string">"env"</span>: <span class="string">".env"</span>,
+  <span class="string">"python_version"</span>: <span class="string">"3.11"</span>
+}</pre>
+                </div>
+            </div>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-filename">Deploy to LangGraph Platform</span>
+                    <span class="code-lang">Shell</span>
+                </div>
+                <div class="code-content">
+<pre><span class="comment"># Install LangGraph CLI</span>
+pip install langgraph-cli
+
+<span class="comment"># Login to LangGraph Platform</span>
+langgraph auth login
+
+<span class="comment"># Build and deploy</span>
+langgraph build
+langgraph deploy --name haci-production
+
+<span class="comment"># Check deployment status</span>
+langgraph deployments list
+
+<span class="comment"># View logs</span>
+langgraph logs haci-production --follow</pre>
+                </div>
+            </div>
+
+            <div class="callout success">
+                <span class="callout-icon">✅</span>
+                <div>
+                    <h4>Platform Benefits</h4>
+                    <p>Automatic checkpointing with PostgreSQL, horizontal scaling, built-in health checks, zero-downtime deploys, and direct LangSmith trace correlation. Get started in minutes.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Self-Hosted Docker -->
+        <section class="section">
+            <h2 class="section-title">Self-Hosted Docker Deployment</h2>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-filename">Dockerfile</span>
+                    <span class="code-lang">Dockerfile</span>
+                </div>
+                <div class="code-content">
+<pre><span class="keyword">FROM</span> python:3.11-slim
+
+<span class="keyword">WORKDIR</span> /app
+
+<span class="comment"># Install system dependencies</span>
+<span class="keyword">RUN</span> apt-get update && apt-get install -y \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+<span class="comment"># Install Python dependencies</span>
+<span class="keyword">COPY</span> requirements.txt .
+<span class="keyword">RUN</span> pip install --no-cache-dir -r requirements.txt
+
+<span class="comment"># Copy application code</span>
+<span class="keyword">COPY</span> haci/ ./haci/
+<span class="keyword">COPY</span> main.py .
+
+<span class="comment"># Set environment variables</span>
+<span class="keyword">ENV</span> PYTHONUNBUFFERED=1
+<span class="keyword">ENV</span> PYTHONDONTWRITEBYTECODE=1
+
+<span class="comment"># Health check</span>
+<span class="keyword">HEALTHCHECK</span> --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+<span class="comment"># Run the application</span>
+<span class="keyword">EXPOSE</span> 8000
+<span class="keyword">CMD</span> [<span class="string">"uvicorn"</span>, <span class="string">"main:app"</span>, <span class="string">"--host"</span>, <span class="string">"0.0.0.0"</span>, <span class="string">"--port"</span>, <span class="string">"8000"</span>]</pre>
+                </div>
+            </div>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-filename">docker-compose.yml</span>
+                    <span class="code-lang">YAML</span>
+                </div>
+                <div class="code-content">
+<pre><span class="keyword">version:</span> <span class="string">'3.8'</span>
+
+<span class="keyword">services:</span>
+  <span class="keyword">haci-api:</span>
+    <span class="keyword">build:</span> .
+    <span class="keyword">ports:</span>
+      - <span class="string">"8000:8000"</span>
+    <span class="keyword">environment:</span>
+      - LANGCHAIN_API_KEY=${LANGCHAIN_API_KEY}
+      - LANGCHAIN_PROJECT=haci-production
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - DATABASE_URL=postgresql://haci:${DB_PASSWORD}@postgres:5432/haci
+      - REDIS_URL=redis://redis:6379/0
+    <span class="keyword">depends_on:</span>
+      - postgres
+      - redis
+    <span class="keyword">deploy:</span>
+      <span class="keyword">replicas:</span> 3
+      <span class="keyword">resources:</span>
+        <span class="keyword">limits:</span>
+          <span class="keyword">cpus:</span> <span class="string">'2'</span>
+          <span class="keyword">memory:</span> 4G
+    <span class="keyword">restart:</span> unless-stopped
+
+  <span class="keyword">postgres:</span>
+    <span class="keyword">image:</span> postgres:15
+    <span class="keyword">environment:</span>
+      - POSTGRES_USER=haci
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=haci
+    <span class="keyword">volumes:</span>
+      - postgres_data:/var/lib/postgresql/data
+    <span class="keyword">healthcheck:</span>
+      <span class="keyword">test:</span> [<span class="string">"CMD-SHELL"</span>, <span class="string">"pg_isready -U haci"</span>]
+      <span class="keyword">interval:</span> 10s
+      <span class="keyword">timeout:</span> 5s
+      <span class="keyword">retries:</span> 5
+
+  <span class="keyword">redis:</span>
+    <span class="keyword">image:</span> redis:7-alpine
+    <span class="keyword">command:</span> redis-server --appendonly yes
+    <span class="keyword">volumes:</span>
+      - redis_data:/data
+
+  <span class="keyword">nginx:</span>
+    <span class="keyword">image:</span> nginx:alpine
+    <span class="keyword">ports:</span>
+      - <span class="string">"80:80"</span>
+      - <span class="string">"443:443"</span>
+    <span class="keyword">volumes:</span>
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+    <span class="keyword">depends_on:</span>
+      - haci-api
+
+<span class="keyword">volumes:</span>
+  <span class="keyword">postgres_data:</span>
+  <span class="keyword">redis_data:</span></pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: FastAPI Application -->
+        <section class="section">
+            <h2 class="section-title">FastAPI Application Server</h2>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-filename">main.py</span>
+                    <span class="code-lang">Python</span>
+                </div>
+                <div class="code-content">
+<pre><span class="keyword">from</span> fastapi <span class="keyword">import</span> FastAPI, HTTPException, BackgroundTasks
+<span class="keyword">from</span> fastapi.middleware.cors <span class="keyword">import</span> CORSMiddleware
+<span class="keyword">from</span> pydantic <span class="keyword">import</span> BaseModel
+<span class="keyword">from</span> typing <span class="keyword">import</span> Optional
+<span class="keyword">import</span> uuid
+
+<span class="keyword">from</span> haci.workflow <span class="keyword">import</span> build_haci_workflow, build_swarm_workflow
+<span class="keyword">from</span> haci.types <span class="keyword">import</span> HumanDecision
+<span class="keyword">from</span> langgraph.checkpoint.postgres <span class="keyword">import</span> PostgresSaver
+<span class="keyword">from</span> langgraph.types <span class="keyword">import</span> Command
+
+app = FastAPI(
+    title=<span class="string">"HACI Agent API"</span>,
+    description=<span class="string">"Harness-Enhanced Agentic Collaborative Intelligence"</span>,
+    version=<span class="string">"1.0.0"</span>
+)
+
+<span class="comment"># CORS middleware</span>
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[<span class="string">"*"</span>],  <span class="comment"># Configure for production</span>
+    allow_credentials=<span class="keyword">True</span>,
+    allow_methods=[<span class="string">"*"</span>],
+    allow_headers=[<span class="string">"*"</span>],
+)
+
+<span class="comment"># Initialize checkpointer</span>
+checkpointer = PostgresSaver.from_conn_string(os.getenv(<span class="string">"DATABASE_URL"</span>))
+
+<span class="comment"># Request/Response models</span>
+<span class="keyword">class</span> <span class="class">TicketRequest</span>(BaseModel):
+    content: str
+    severity: str = <span class="string">"medium"</span>
+    customer_tier: str = <span class="string">"standard"</span>
+    metadata: Optional[dict] = <span class="keyword">None</span>
+
+<span class="keyword">class</span> <span class="class">TicketResponse</span>(BaseModel):
+    thread_id: str
+    status: str
+    finding: Optional[dict] = <span class="keyword">None</span>
+    requires_approval: bool = <span class="keyword">False</span>
+    approval_request: Optional[dict] = <span class="keyword">None</span>
+
+<span class="decorator">@app.get</span>(<span class="string">"/health"</span>)
+<span class="keyword">async</span> <span class="keyword">def</span> <span class="function">health_check</span>():
+    <span class="keyword">return</span> {<span class="string">"status"</span>: <span class="string">"healthy"</span>, <span class="string">"version"</span>: <span class="string">"1.0.0"</span>}
+
+<span class="decorator">@app.post</span>(<span class="string">"/tickets/investigate"</span>, response_model=TicketResponse)
+<span class="keyword">async</span> <span class="keyword">def</span> <span class="function">investigate_ticket</span>(ticket: TicketRequest):
+    <span class="string">"""Start a new ticket investigation."""</span>
+    thread_id = str(uuid.uuid4())
+    config = {<span class="string">"configurable"</span>: {<span class="string">"thread_id"</span>: thread_id}}
+    
+    workflow = <span class="function">build_haci_workflow</span>(checkpointer=checkpointer)
+    
+    <span class="keyword">try</span>:
+        result = <span class="keyword">await</span> workflow.ainvoke(
+            {
+                <span class="string">"messages"</span>: [{<span class="string">"role"</span>: <span class="string">"user"</span>, <span class="string">"content"</span>: ticket.content}],
+                <span class="string">"ticket_metadata"</span>: {
+                    <span class="string">"severity"</span>: ticket.severity,
+                    <span class="string">"customer_tier"</span>: ticket.customer_tier,
+                    **(ticket.metadata <span class="keyword">or</span> {})
+                }
+            },
+            config=config
+        )
+        
+        <span class="comment"># Check if waiting for human approval</span>
+        state = <span class="keyword">await</span> workflow.aget_state(config)
+        
+        <span class="keyword">if</span> state.next:  <span class="comment"># Interrupted, waiting for input</span>
+            <span class="keyword">return</span> TicketResponse(
+                thread_id=thread_id,
+                status=<span class="string">"pending_approval"</span>,
+                requires_approval=<span class="keyword">True</span>,
+                approval_request=state.values.get(<span class="string">"pending_approval_request"</span>)
+            )
+        
+        <span class="keyword">return</span> TicketResponse(
+            thread_id=thread_id,
+            status=<span class="string">"completed"</span>,
+            finding=result.get(<span class="string">"finding"</span>),
+            requires_approval=<span class="keyword">False</span>
+        )
+    
+    <span class="keyword">except</span> Exception <span class="keyword">as</span> e:
+        <span class="keyword">raise</span> HTTPException(status_code=<span class="number">500</span>, detail=str(e))
+
+<span class="decorator">@app.post</span>(<span class="string">"/tickets/{thread_id}/approve"</span>)
+<span class="keyword">async</span> <span class="keyword">def</span> <span class="function">approve_action</span>(
+    thread_id: str,
+    reviewer_id: str,
+    notes: Optional[str] = <span class="keyword">None</span>
+):
+    <span class="string">"""Approve a pending action and resume investigation."""</span>
+    workflow = <span class="function">build_haci_workflow</span>(checkpointer=checkpointer)
+    config = {<span class="string">"configurable"</span>: {<span class="string">"thread_id"</span>: thread_id}}
+    
+    decision = HumanDecision(
+        approved=<span class="keyword">True</span>,
+        reviewer_id=reviewer_id,
+        notes=notes
+    )
+    
+    result = <span class="keyword">await</span> workflow.ainvoke(
+        Command(resume=decision.model_dump()),
+        config=config
+    )
+    
+    <span class="keyword">return</span> {<span class="string">"thread_id"</span>: thread_id, <span class="string">"status"</span>: <span class="string">"resumed"</span>, <span class="string">"result"</span>: result}
+
+<span class="decorator">@app.post</span>(<span class="string">"/tickets/{thread_id}/reject"</span>)
+<span class="keyword">async</span> <span class="keyword">def</span> <span class="function">reject_action</span>(
+    thread_id: str,
+    reviewer_id: str,
+    notes: str,
+    modified_action: Optional[str] = <span class="keyword">None</span>
+):
+    <span class="string">"""Reject a pending action with feedback."""</span>
+    workflow = <span class="function">build_haci_workflow</span>(checkpointer=checkpointer)
+    config = {<span class="string">"configurable"</span>: {<span class="string">"thread_id"</span>: thread_id}}
+    
+    decision = HumanDecision(
+        approved=<span class="keyword">False</span>,
+        reviewer_id=reviewer_id,
+        notes=notes,
+        modified_action=modified_action
+    )
+    
+    result = <span class="keyword">await</span> workflow.ainvoke(
+        Command(resume=decision.model_dump()),
+        config=config
+    )
+    
+    <span class="keyword">return</span> {<span class="string">"thread_id"</span>: thread_id, <span class="string">"status"</span>: <span class="string">"rejected"</span>, <span class="string">"result"</span>: result}
+
+<span class="decorator">@app.get</span>(<span class="string">"/tickets/{thread_id}/status"</span>)
+<span class="keyword">async</span> <span class="keyword">def</span> <span class="function">get_ticket_status</span>(thread_id: str):
+    <span class="string">"""Get the current status of an investigation."""</span>
+    workflow = <span class="function">build_haci_workflow</span>(checkpointer=checkpointer)
+    config = {<span class="string">"configurable"</span>: {<span class="string">"thread_id"</span>: thread_id}}
+    
+    state = <span class="keyword">await</span> workflow.aget_state(config)
+    
+    <span class="keyword">if</span> state <span class="keyword">is</span> <span class="keyword">None</span>:
+        <span class="keyword">raise</span> HTTPException(status_code=<span class="number">404</span>, detail=<span class="string">"Thread not found"</span>)
+    
+    <span class="keyword">return</span> {
+        <span class="string">"thread_id"</span>: thread_id,
+        <span class="string">"iteration"</span>: state.values.get(<span class="string">"iteration"</span>, <span class="number">0</span>),
+        <span class="string">"status"</span>: <span class="string">"pending_approval"</span> <span class="keyword">if</span> state.next <span class="keyword">else</span> <span class="string">"completed"</span>,
+        <span class="string">"finding"</span>: state.values.get(<span class="string">"finding"</span>)
+    }</pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: Kubernetes Deployment -->
+        <section class="section">
+            <h2 class="section-title">Kubernetes Configuration</h2>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-filename">k8s/deployment.yaml</span>
+                    <span class="code-lang">YAML</span>
+                </div>
+                <div class="code-content">
+<pre><span class="keyword">apiVersion:</span> apps/v1
+<span class="keyword">kind:</span> Deployment
+<span class="keyword">metadata:</span>
+  <span class="keyword">name:</span> haci-agent
+  <span class="keyword">labels:</span>
+    <span class="keyword">app:</span> haci-agent
+<span class="keyword">spec:</span>
+  <span class="keyword">replicas:</span> 3
+  <span class="keyword">selector:</span>
+    <span class="keyword">matchLabels:</span>
+      <span class="keyword">app:</span> haci-agent
+  <span class="keyword">template:</span>
+    <span class="keyword">metadata:</span>
+      <span class="keyword">labels:</span>
+        <span class="keyword">app:</span> haci-agent
+    <span class="keyword">spec:</span>
+      <span class="keyword">containers:</span>
+      - <span class="keyword">name:</span> haci-agent
+        <span class="keyword">image:</span> your-registry/haci-agent:latest
+        <span class="keyword">ports:</span>
+        - <span class="keyword">containerPort:</span> 8000
+        <span class="keyword">env:</span>
+        - <span class="keyword">name:</span> LANGCHAIN_API_KEY
+          <span class="keyword">valueFrom:</span>
+            <span class="keyword">secretKeyRef:</span>
+              <span class="keyword">name:</span> haci-secrets
+              <span class="keyword">key:</span> langchain-api-key
+        - <span class="keyword">name:</span> ANTHROPIC_API_KEY
+          <span class="keyword">valueFrom:</span>
+            <span class="keyword">secretKeyRef:</span>
+              <span class="keyword">name:</span> haci-secrets
+              <span class="keyword">key:</span> anthropic-api-key
+        - <span class="keyword">name:</span> DATABASE_URL
+          <span class="keyword">valueFrom:</span>
+            <span class="keyword">secretKeyRef:</span>
+              <span class="keyword">name:</span> haci-secrets
+              <span class="keyword">key:</span> database-url
+        <span class="keyword">resources:</span>
+          <span class="keyword">requests:</span>
+            <span class="keyword">memory:</span> <span class="string">"2Gi"</span>
+            <span class="keyword">cpu:</span> <span class="string">"1000m"</span>
+          <span class="keyword">limits:</span>
+            <span class="keyword">memory:</span> <span class="string">"4Gi"</span>
+            <span class="keyword">cpu:</span> <span class="string">"2000m"</span>
+        <span class="keyword">livenessProbe:</span>
+          <span class="keyword">httpGet:</span>
+            <span class="keyword">path:</span> /health
+            <span class="keyword">port:</span> 8000
+          <span class="keyword">initialDelaySeconds:</span> 10
+          <span class="keyword">periodSeconds:</span> 30
+        <span class="keyword">readinessProbe:</span>
+          <span class="keyword">httpGet:</span>
+            <span class="keyword">path:</span> /health
+            <span class="keyword">port:</span> 8000
+          <span class="keyword">initialDelaySeconds:</span> 5
+          <span class="keyword">periodSeconds:</span> 10
+---
+<span class="keyword">apiVersion:</span> autoscaling/v2
+<span class="keyword">kind:</span> HorizontalPodAutoscaler
+<span class="keyword">metadata:</span>
+  <span class="keyword">name:</span> haci-agent-hpa
+<span class="keyword">spec:</span>
+  <span class="keyword">scaleTargetRef:</span>
+    <span class="keyword">apiVersion:</span> apps/v1
+    <span class="keyword">kind:</span> Deployment
+    <span class="keyword">name:</span> haci-agent
+  <span class="keyword">minReplicas:</span> 3
+  <span class="keyword">maxReplicas:</span> 20
+  <span class="keyword">metrics:</span>
+  - <span class="keyword">type:</span> Resource
+    <span class="keyword">resource:</span>
+      <span class="keyword">name:</span> cpu
+      <span class="keyword">target:</span>
+        <span class="keyword">type:</span> Utilization
+        <span class="keyword">averageUtilization:</span> 70
+  - <span class="keyword">type:</span> Resource
+    <span class="keyword">resource:</span>
+      <span class="keyword">name:</span> memory
+      <span class="keyword">target:</span>
+        <span class="keyword">type:</span> Utilization
+        <span class="keyword">averageUtilization:</span> 80</pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 6: Monitoring -->
+        <section class="section">
+            <h2 class="section-title">Production Monitoring</h2>
+
+            <div class="cards-grid">
+                <div class="feature-card">
+                    <h4>📊 LangSmith Dashboard</h4>
+                    <p>Real-time trace visualization, latency metrics, token usage, and error tracking. Built-in with LangGraph.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>📈 Prometheus Metrics</h4>
+                    <p>Export custom metrics for request count, latency percentiles, and business KPIs. Integrate with Grafana.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>🔔 Alerting</h4>
+                    <p>PagerDuty integration for critical failures, autonomy threshold breaches, and SLA violations.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>📝 Structured Logging</h4>
+                    <p>JSON logs with trace IDs, correlation to LangSmith runs, and centralized aggregation.</p>
+                </div>
+            </div>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-filename">monitoring.py</span>
+                    <span class="code-lang">Python</span>
+                </div>
+                <div class="code-content">
+<pre><span class="keyword">from</span> prometheus_client <span class="keyword">import</span> Counter, Histogram, Gauge, start_http_server
+<span class="keyword">import</span> structlog
+
+<span class="comment"># Prometheus metrics</span>
+TICKETS_PROCESSED = Counter(
+    <span class="string">'haci_tickets_processed_total'</span>,
+    <span class="string">'Total tickets processed'</span>,
+    [<span class="string">'severity'</span>, <span class="string">'outcome'</span>]
+)
+
+INVESTIGATION_DURATION = Histogram(
+    <span class="string">'haci_investigation_duration_seconds'</span>,
+    <span class="string">'Time to complete investigation'</span>,
+    buckets=[<span class="number">1</span>, <span class="number">5</span>, <span class="number">10</span>, <span class="number">30</span>, <span class="number">60</span>, <span class="number">120</span>, <span class="number">300</span>]
+)
+
+CONFIDENCE_SCORE = Histogram(
+    <span class="string">'haci_confidence_score'</span>,
+    <span class="string">'Distribution of confidence scores'</span>,
+    buckets=[<span class="number">0.1</span>, <span class="number">0.2</span>, <span class="number">0.3</span>, <span class="number">0.4</span>, <span class="number">0.5</span>, <span class="number">0.6</span>, <span class="number">0.7</span>, <span class="number">0.8</span>, <span class="number">0.9</span>, <span class="number">1.0</span>]
+)
+
+PENDING_APPROVALS = Gauge(
+    <span class="string">'haci_pending_approvals'</span>,
+    <span class="string">'Number of investigations waiting for human approval'</span>
+)
+
+<span class="comment"># Structured logging</span>
+structlog.configure(
+    processors=[
+        structlog.processors.TimeStamper(fmt=<span class="string">"iso"</span>),
+        structlog.processors.JSONRenderer()
+    ]
+)
+logger = structlog.get_logger()
+
+<span class="keyword">def</span> <span class="function">record_investigation_complete</span>(
+    thread_id: str,
+    severity: str,
+    outcome: str,
+    duration_seconds: float,
+    confidence: float,
+    langsmith_url: str
+):
+    <span class="string">"""Record metrics and logs for completed investigation."""</span>
+    <span class="comment"># Prometheus</span>
+    TICKETS_PROCESSED.labels(severity=severity, outcome=outcome).inc()
+    INVESTIGATION_DURATION.observe(duration_seconds)
+    CONFIDENCE_SCORE.observe(confidence)
+    
+    <span class="comment"># Structured log</span>
+    logger.info(
+        <span class="string">"investigation_complete"</span>,
+        thread_id=thread_id,
+        severity=severity,
+        outcome=outcome,
+        duration_seconds=duration_seconds,
+        confidence=confidence,
+        langsmith_url=langsmith_url
+    )
+
+<span class="comment"># Start metrics server</span>
+start_http_server(<span class="number">9090</span>)</pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 7: Production Checklist -->
+        <section class="section">
+            <h2 class="section-title">Production Readiness Checklist</h2>
+
+            <div class="checklist">
+                <h4>🔒 Security</h4>
+                <div class="checklist-item"><span class="check">✓</span><span>API keys stored in secrets manager (not env vars)</span></div>
+                <div class="checklist-item"><span class="check">✓</span><span>TLS/HTTPS enabled for all endpoints</span></div>
+                <div class="checklist-item"><span class="check">✓</span><span>Rate limiting configured</span></div>
+                <div class="checklist-item"><span class="check">✓</span><span>Authentication/authorization implemented</span></div>
+                <div class="checklist-item"><span class="check">✓</span><span>Input validation and sanitization</span></div>
+            </div>
+
+            <div class="checklist">
+                <h4>📊 Observability</h4>
+                <div class="checklist-item"><span class="check">✓</span><span>LangSmith tracing enabled for all workflows</span></div>
+                <div class="checklist-item"><span class="check">✓</span><span>Prometheus metrics exported</span></div>
+                <div class="checklist-item"><span class="check">✓</span><span>Structured logging with trace correlation</span></div>
+                <div class="checklist-item"><span class="check">✓</span><span>Health check endpoints implemented</span></div>
+                <div class="checklist-item"><span class="check">✓</span><span>Alerting rules configured</span></div>
+            </div>
+
+            <div class="checklist">
+                <h4>⚡ Reliability</h4>
+                <div class="checklist-item"><span class="check">✓</span><span>PostgreSQL checkpointer for state persistence</span></div>
+                <div class="checklist-item"><span class="check">✓</span><span>Horizontal auto-scaling configured</span></div>
+                <div class="checklist-item"><span class="check">✓</span><span>Database connection pooling</span></div>
+                <div class="checklist-item"><span class="check">✓</span><span>Graceful shutdown handling</span></div>
+                <div class="checklist-item"><span class="check">✓</span><span>Circuit breakers for external dependencies</span></div>
+            </div>
+
+            <div class="checklist">
+                <h4>🧪 Testing</h4>
+                <div class="checklist-item"><span class="check">✓</span><span>Unit tests for all harness phases</span></div>
+                <div class="checklist-item"><span class="check">✓</span><span>Integration tests for full workflows</span></div>
+                <div class="checklist-item"><span class="check">✓</span><span>LangSmith evaluation datasets created</span></div>
+                <div class="checklist-item"><span class="check">✓</span><span>CI/CD pipeline with automated evaluation</span></div>
+                <div class="checklist-item"><span class="check">✓</span><span>Performance baseline established</span></div>
+            </div>
+        </section>
+
+        <!-- Section 8: Architecture Diagram -->
+        <section class="section">
+            <h2 class="section-title">Production Architecture</h2>
+
+            <div class="architecture-diagram">
+                <div class="arch-row">
+                    <div class="arch-box">Clients / Ticketing System</div>
+                </div>
+                <div class="arch-row">
+                    <span class="arch-connector">↓</span>
+                </div>
+                <div class="arch-row">
+                    <div class="arch-box">Load Balancer (nginx/ALB)</div>
+                </div>
+                <div class="arch-row">
+                    <span class="arch-connector">↓</span>
+                </div>
+                <div class="arch-row">
+                    <div class="arch-box primary">HACI API (FastAPI)</div>
+                    <div class="arch-box primary">HACI API (FastAPI)</div>
+                    <div class="arch-box primary">HACI API (FastAPI)</div>
+                </div>
+                <div class="arch-row">
+                    <span class="arch-connector">↓</span>
+                </div>
+                <div class="arch-row">
+                    <div class="arch-box secondary">LangGraph Workflows</div>
+                    <span class="arch-connector">→</span>
+                    <div class="arch-box">LangSmith</div>
+                </div>
+                <div class="arch-row">
+                    <span class="arch-connector">↓</span>
+                </div>
+                <div class="arch-row">
+                    <div class="arch-box">PostgreSQL (State)</div>
+                    <div class="arch-box">Redis (Cache)</div>
+                    <div class="arch-box">Anthropic API</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Completion -->
+        <section class="section" style="text-align: center; padding: 3rem; background: linear-gradient(135deg, rgba(5,150,105,0.1), rgba(5,150,105,0.05)); border-radius: 16px; margin-top: 3rem;">
+            <h2 style="font-size: 2rem; color: var(--deploy-emerald); margin-bottom: 1rem;">🎉 Implementation Guide Complete</h2>
+            <p style="color: var(--gray-600); font-size: 1.125rem; max-width: 600px; margin: 0 auto 2rem;">
+                You now have a comprehensive blueprint for building and deploying HACI agents using LangSmith and LangGraph. From setup to production—you're ready to ship!
+            </p>
+            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                <a href="haci_langsmith_1_setup.html" class="nav-btn complete">
+                    <span>📖</span>
+                    <span>Start from Beginning</span>
+                </a>
+                <a href="https://docs.smith.langchain.com" class="nav-btn" target="_blank" style="background: var(--gray-900); color: white; border: none;">
+                    <span>📚</span>
+                    <span>LangSmith Docs</span>
+                </a>
+            </div>
+        </section>
+
+        <!-- Navigation Footer -->
+        <nav class="nav-footer">
+            <a href="haci_langsmith_9_testing.html" class="nav-btn">
+                <span>←</span>
+                <div>
+                    <div class="nav-btn-label">Previous</div>
+                    <div class="nav-btn-title">Testing & Evaluation</div>
+                </div>
+            </a>
+            <a href="haci_langsmith_1_setup.html" class="nav-btn complete">
+                <div>
+                    <div class="nav-btn-label">Back to Start</div>
+                    <div class="nav-btn-title">Setup & Prerequisites</div>
+                </div>
+                <span>🔄</span>
+            </a>
+        </nav>
+    </div>
+
+    <footer>
+        <p><strong>HACI on LangSmith</strong> - Complete Implementation Guide</p>
+        <p>10 Chapters • Setup → Graph → Agents → Observability → Phases → Swarm → Context → HITL → Testing → Deployment</p>
+        <p style="margin-top: 1rem; opacity: 0.7;">Built with LangGraph • Powered by Anthropic Claude • Monitored by LangSmith</p>
+    </footer>
+</body>
+</html>

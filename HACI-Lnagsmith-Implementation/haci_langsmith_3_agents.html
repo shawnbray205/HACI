@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HACI on LangSmith - Agent Implementation</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --purple-color: #9b59b6;
+            --teal-color: #1abc9c;
+            --langchain-green: #00A67E;
+            --light-bg: #ecf0f1;
+            --white: #ffffff;
+            --text-color: #2c3e50;
+            --text-light: #7f8c8d;
+            --border-color: #bdc3c7;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background: var(--white);
+        }
+
+        .nav {
+            position: sticky;
+            top: 0;
+            background: var(--primary-color);
+            padding: 1rem 2rem;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .nav-brand { color: var(--white); font-size: 1.5rem; font-weight: 700; text-decoration: none; }
+        .nav-brand span { color: var(--langchain-green); }
+        .nav-links { display: flex; gap: 2rem; align-items: center; }
+        .nav-links a { color: rgba(255,255,255,0.8); text-decoration: none; font-size: 0.95rem; transition: color 0.3s; }
+        .nav-links a:hover, .nav-links a.active { color: var(--white); }
+        .page-indicator { background: var(--langchain-green); color: var(--white); padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.85rem; }
+
+        .hero {
+            background: linear-gradient(135deg, var(--purple-color) 0%, var(--primary-color) 50%, var(--langchain-green) 100%);
+            color: var(--white);
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+
+        .hero h1 { font-size: 2.8rem; margin-bottom: 1rem; font-weight: 700; }
+        .hero .subtitle { font-size: 1.3rem; opacity: 0.95; max-width: 700px; margin: 0 auto; }
+
+        .stats-bar {
+            background: var(--primary-color);
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: center;
+            gap: 4rem;
+            flex-wrap: wrap;
+        }
+
+        .stat-item { text-align: center; color: var(--white); }
+        .stat-value { font-size: 2rem; font-weight: 700; color: var(--langchain-green); }
+        .stat-label { font-size: 0.85rem; opacity: 0.8; text-transform: uppercase; letter-spacing: 1px; }
+
+        .main-content { max-width: 1200px; margin: 0 auto; padding: 3rem 2rem; }
+        .section { margin-bottom: 4rem; }
+
+        .section-title {
+            font-size: 2rem;
+            color: var(--primary-color);
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            position: relative;
+            text-align: center;
+        }
+
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 3px;
+            background: linear-gradient(90deg, var(--langchain-green), var(--purple-color));
+            border-radius: 2px;
+        }
+
+        .section-intro { text-align: center; max-width: 800px; margin: 0 auto 2rem; color: var(--text-light); font-size: 1.1rem; }
+
+        .code-block {
+            background: #1e1e1e;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            overflow-x: auto;
+        }
+
+        .code-block pre {
+            margin: 0;
+            color: #d4d4d4;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+
+        .code-block .keyword { color: #569cd6; }
+        .code-block .string { color: #ce9178; }
+        .code-block .comment { color: #6a9955; }
+        .code-block .function { color: #dcdcaa; }
+        .code-block .class { color: #4ec9b0; }
+        .code-block .number { color: #b5cea8; }
+        .code-block .decorator { color: #d7ba7d; }
+        .code-block .type { color: #4ec9b0; }
+
+        .code-header {
+            background: #2d2d2d;
+            color: #ccc;
+            padding: 0.5rem 1rem;
+            border-radius: 10px 10px 0 0;
+            font-size: 0.85rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .code-header + .code-block { border-radius: 0 0 10px 10px; margin-top: 0; }
+
+        .callout { padding: 1.5rem; border-radius: 10px; margin: 1.5rem 0; border-left: 4px solid; }
+        .callout.info { background: #e8f4fd; border-color: var(--secondary-color); }
+        .callout.success { background: #e8f8f5; border-color: var(--langchain-green); }
+        .callout.warning { background: #fdf2e9; border-color: var(--warning-color); }
+        .callout-title { font-weight: 600; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        .callout.info .callout-title { color: var(--secondary-color); }
+        .callout.success .callout-title { color: var(--langchain-green); }
+        .callout.warning .callout-title { color: var(--warning-color); }
+
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin: 2rem 0; }
+
+        .card {
+            background: var(--white);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.08);
+            transition: transform 0.3s, box-shadow 0.3s;
+            border: 1px solid var(--border-color);
+        }
+
+        .card:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,0,0,0.12); }
+
+        .card-header { padding: 1rem 1.5rem; color: var(--white); font-weight: 600; font-size: 1rem; }
+        .card-header.green { background: linear-gradient(135deg, var(--langchain-green), #00875A); }
+        .card-header.blue { background: linear-gradient(135deg, var(--secondary-color), #2980b9); }
+        .card-header.purple { background: linear-gradient(135deg, var(--purple-color), #8e44ad); }
+        .card-header.teal { background: linear-gradient(135deg, var(--teal-color), #16a085); }
+        .card-header.orange { background: linear-gradient(135deg, var(--warning-color), #e67e22); }
+        .card-header.red { background: linear-gradient(135deg, var(--accent-color), #c0392b); }
+
+        .card-body { padding: 1.5rem; }
+        .card-body p { margin-bottom: 0.5rem; color: var(--text-light); font-size: 0.9rem; }
+        .card-body ul { padding-left: 1.2rem; margin-top: 0.5rem; }
+        .card-body li { margin-bottom: 0.3rem; color: var(--text-color); font-size: 0.9rem; }
+
+        .nav-footer {
+            display: flex;
+            justify-content: space-between;
+            padding: 2rem 0;
+            border-top: 1px solid var(--border-color);
+            margin-top: 3rem;
+        }
+
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 1.5rem;
+            background: var(--light-bg);
+            border-radius: 8px;
+            text-decoration: none;
+            color: var(--primary-color);
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .nav-btn:hover { background: var(--langchain-green); color: var(--white); }
+
+        .footer {
+            background: var(--primary-color);
+            color: var(--white);
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .footer-stats { display: flex; justify-content: center; gap: 3rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        .footer-stat { text-align: center; }
+        .footer-stat-value { font-size: 1.5rem; font-weight: 700; color: var(--langchain-green); }
+        .footer-stat-label { font-size: 0.8rem; opacity: 0.7; text-transform: uppercase; }
+
+        @media (max-width: 768px) {
+            .nav-footer { flex-direction: column; gap: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <a href="#" class="nav-brand">HACI on <span>LangSmith</span></a>
+        <div class="nav-links">
+            <a href="haci_langsmith_1_setup.html">Setup</a>
+            <a href="haci_langsmith_2_graph.html">Graph Architecture</a>
+            <a href="#" class="active">Agents</a>
+            <a href="haci_langsmith_4_observability.html">Observability</a>
+            <span class="page-indicator">Page 3 of 4</span>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <h1>Agent Implementation</h1>
+        <p class="subtitle">Building specialized agents with domain expertise, tool bindings, and multi-agent swarm coordination</p>
+    </section>
+
+    <div class="stats-bar">
+        <div class="stat-item">
+            <div class="stat-value">6</div>
+            <div class="stat-label">Specialized Agents</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">25+</div>
+            <div class="stat-label">Tools Available</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">4</div>
+            <div class="stat-label">Harness Methods</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">1</div>
+            <div class="stat-label">Coordinator</div>
+        </div>
+    </div>
+
+    <main class="main-content">
+        <!-- Base Agent -->
+        <section class="section">
+            <h2 class="section-title">Step 1: Base Agent Class</h2>
+            <p class="section-intro">
+                The base agent implements the harness interface (think, act, observe, evaluate) that all specialized agents inherit.
+            </p>
+
+            <div class="code-header">
+                <span>src/agents/base_agent.py</span>
+                <span>python</span>
+            </div>
+            <div class="code-block">
+<pre><span class="string">"""
+HACI Base Agent Class
+
+Abstract base class that all specialized agents inherit from.
+Implements the harness interface and common functionality.
+"""</span>
+
+<span class="keyword">from</span> abc <span class="keyword">import</span> ABC, abstractmethod
+<span class="keyword">from</span> typing <span class="keyword">import</span> List, Dict, Any, Optional
+<span class="keyword">from</span> pydantic <span class="keyword">import</span> BaseModel, Field
+
+<span class="keyword">from</span> langchain_anthropic <span class="keyword">import</span> ChatAnthropic
+<span class="keyword">from</span> langchain_openai <span class="keyword">import</span> ChatOpenAI
+<span class="keyword">from</span> langchain_core.tools <span class="keyword">import</span> BaseTool
+<span class="keyword">from</span> langchain_core.prompts <span class="keyword">import</span> ChatPromptTemplate
+<span class="keyword">from</span> langsmith <span class="keyword">import</span> traceable
+
+
+<span class="keyword">class</span> <span class="class">AgentConfig</span>(BaseModel):
+    <span class="string">"""Configuration for a specialized agent."""</span>
+    agent_id: <span class="type">str</span>
+    domain: <span class="type">str</span>
+    description: <span class="type">str</span>
+    primary_model: <span class="type">str</span> = <span class="string">"claude-sonnet-4-20250514"</span>
+    fallback_model: <span class="type">str</span> = <span class="string">"gpt-4o"</span>
+    max_tool_calls: <span class="type">int</span> = <span class="number">5</span>
+    timeout_seconds: <span class="type">int</span> = <span class="number">300</span>
+
+
+<span class="keyword">class</span> <span class="class">BaseAgent</span>(ABC):
+    <span class="string">"""
+    Abstract base class for HACI specialized agents.
+    
+    Each agent implements:
+    - think(): Form hypotheses and create investigation plan
+    - act(): Execute tools from the plan
+    - observe(): Analyze tool results
+    - evaluate(): Calculate confidence and decide next action
+    """</span>
+    
+    <span class="keyword">def</span> <span class="function">__init__</span>(self, config: AgentConfig, tools: List[BaseTool]):
+        self.config = config
+        self.tools = {tool.name: tool <span class="keyword">for</span> tool <span class="keyword">in</span> tools}
+        
+        <span class="comment"># Initialize LLM</span>
+        self.llm = ChatAnthropic(
+            model=config.primary_model,
+            temperature=<span class="number">0.1</span>,  <span class="comment"># Low for consistency</span>
+            max_tokens=<span class="number">4096</span>,
+        )
+        
+        <span class="comment"># Fallback LLM</span>
+        self.fallback_llm = ChatOpenAI(
+            model=config.fallback_model,
+            temperature=<span class="number">0.1</span>,
+        )
+        
+        <span class="comment"># Bind tools to LLM</span>
+        self.llm_with_tools = self.llm.bind_tools(tools)
+    
+    <span class="decorator">@property</span>
+    @abstractmethod
+    <span class="keyword">def</span> <span class="function">system_prompt</span>(self) -> <span class="type">str</span>:
+        <span class="string">"""Return the agent's system prompt with identity and expertise."""</span>
+        <span class="keyword">pass</span>
+    
+    <span class="comment"># =========================================================================</span>
+    <span class="comment"># HARNESS PHASE METHODS</span>
+    <span class="comment"># =========================================================================</span>
+    
+    <span class="decorator">@traceable</span>(name=<span class="string">"agent_think"</span>)
+    <span class="keyword">async def</span> <span class="function">think</span>(self, context: Dict[<span class="type">str</span>, Any]) -> Dict[<span class="type">str</span>, Any]:
+        <span class="string">"""
+        THINK Phase: Analyze input and form hypotheses.
+        
+        Args:
+            context: Current investigation context including ticket,
+                    existing hypotheses, and observations
+                    
+        Returns:
+            Dict with 'hypotheses' and 'investigation_plan'
+        """</span>
+        prompt = ChatPromptTemplate.from_messages([
+            (<span class="string">"system"</span>, self.system_prompt + <span class="string">"""
+
+## THINK PHASE INSTRUCTIONS
+
+You are in the THINK phase. Your task is to:
+1. Analyze the ticket and any existing context
+2. Form hypotheses about the root cause
+3. Create an investigation plan
+
+Respond with a JSON object:
+{
+    "hypotheses": [
+        {
+            "id": "H1",
+            "description": "Hypothesis description",
+            "confidence": 0.0-1.0,
+            "evidence": [],
+            "status": "active"
+        }
+    ],
+    "investigation_plan": [
+        {
+            "tool": "tool_name",
+            "params": {},
+            "reason": "Why this action helps"
+        }
+    ]
+}"""</span>),
+            (<span class="string">"human"</span>, <span class="string">"""
+## Current Context
+
+**Ticket:** {ticket}
+**Severity:** {severity}
+
+**Existing Hypotheses:** {existing_hypotheses}
+**Previous Observations:** {observations}
+**Known Gaps:** {gaps}
+
+Generate your hypotheses and investigation plan."""</span>)
+        ])
+        
+        chain = prompt | self.llm
+        response = <span class="keyword">await</span> chain.ainvoke(context)
+        
+        <span class="comment"># Parse JSON response</span>
+        <span class="keyword">import</span> json
+        result = json.loads(response.content)
+        
+        <span class="keyword">return</span> result
+    
+    <span class="decorator">@traceable</span>(name=<span class="string">"agent_act"</span>)
+    <span class="keyword">async def</span> <span class="function">act</span>(self, investigation_plan: List[Dict]) -> List[Dict]:
+        <span class="string">"""
+        ACT Phase: Execute tools from the investigation plan.
+        
+        Args:
+            investigation_plan: List of actions to execute
+            
+        Returns:
+            List of ToolCall results
+        """</span>
+        <span class="keyword">from</span> src.state.harness_state <span class="keyword">import</span> ToolCall
+        <span class="keyword">from</span> datetime <span class="keyword">import</span> datetime
+        <span class="keyword">import</span> time
+        
+        results = []
+        
+        <span class="keyword">for</span> action <span class="keyword">in</span> investigation_plan[:self.config.max_tool_calls]:
+            tool_name = action[<span class="string">"tool"</span>]
+            params = action.get(<span class="string">"params"</span>, {})
+            
+            <span class="keyword">if</span> tool_name <span class="keyword">not in</span> self.tools:
+                results.append(ToolCall(
+                    tool_name=tool_name,
+                    parameters=params,
+                    error=<span class="string">f"Tool '{tool_name}' not available"</span>,
+                ))
+                <span class="keyword">continue</span>
+            
+            tool = self.tools[tool_name]
+            start_time = time.time()
+            
+            <span class="keyword">try</span>:
+                result = <span class="keyword">await</span> tool.ainvoke(params)
+                duration_ms = <span class="type">int</span>((time.time() - start_time) * <span class="number">1000</span>)
+                
+                results.append(ToolCall(
+                    tool_name=tool_name,
+                    parameters=params,
+                    result=<span class="type">str</span>(result),
+                    duration_ms=duration_ms,
+                ))
+            <span class="keyword">except</span> Exception <span class="keyword">as</span> e:
+                results.append(ToolCall(
+                    tool_name=tool_name,
+                    parameters=params,
+                    error=<span class="type">str</span>(e),
+                    duration_ms=<span class="type">int</span>((time.time() - start_time) * <span class="number">1000</span>),
+                ))
+        
+        <span class="keyword">return</span> results
+    
+    <span class="decorator">@traceable</span>(name=<span class="string">"agent_observe"</span>)
+    <span class="keyword">async def</span> <span class="function">observe</span>(
+        self, 
+        tool_results: List[Dict], 
+        hypotheses: List[Dict]
+    ) -> Dict[<span class="type">str</span>, Any]:
+        <span class="string">"""
+        OBSERVE Phase: Analyze tool results and extract insights.
+        """</span>
+        prompt = ChatPromptTemplate.from_messages([
+            (<span class="string">"system"</span>, self.system_prompt + <span class="string">"""
+
+## OBSERVE PHASE INSTRUCTIONS
+
+You are in the OBSERVE phase. Analyze the tool results and:
+1. Extract key observations
+2. Identify patterns and correlations
+3. Update hypothesis confidence
+4. Identify remaining gaps
+
+Respond with JSON:
+{
+    "observations": [
+        {
+            "id": "O1",
+            "source_tool": "tool_name",
+            "finding": "What you found",
+            "supports_hypothesis": "H1 or null",
+            "confidence_impact": -0.2 to 0.3
+        }
+    ],
+    "correlations": [
+        {"observations": ["O1", "O2"], "pattern": "Description"}
+    ],
+    "gaps": ["What we still need to investigate"]
+}"""</span>),
+            (<span class="string">"human"</span>, <span class="string">"""
+## Tool Results
+{tool_results}
+
+## Current Hypotheses
+{hypotheses}
+
+Analyze these results and provide observations."""</span>)
+        ])
+        
+        chain = prompt | self.llm
+        response = <span class="keyword">await</span> chain.ainvoke({
+            <span class="string">"tool_results"</span>: tool_results,
+            <span class="string">"hypotheses"</span>: hypotheses,
+        })
+        
+        <span class="keyword">import</span> json
+        <span class="keyword">return</span> json.loads(response.content)
+    
+    <span class="decorator">@traceable</span>(name=<span class="string">"agent_evaluate"</span>)
+    <span class="keyword">async def</span> <span class="function">evaluate</span>(
+        self,
+        hypotheses: List[Dict],
+        observations: List[Dict],
+        gaps: List[<span class="type">str</span>],
+        iteration: <span class="type">int</span>,
+        max_iterations: <span class="type">int</span>,
+    ) -> Dict[<span class="type">str</span>, Any]:
+        <span class="string">"""
+        EVALUATE Phase: Calculate confidence and decide next action.
+        """</span>
+        prompt = ChatPromptTemplate.from_messages([
+            (<span class="string">"system"</span>, self.system_prompt + <span class="string">"""
+
+## EVALUATE PHASE INSTRUCTIONS
+
+Calculate overall confidence and decide the next action.
+
+Confidence calculation:
+- Start with best hypothesis confidence
+- Adjust based on supporting evidence
+- Penalize for contradicting evidence
+- Penalize for remaining gaps
+
+Decision thresholds:
+- confidence >= 0.80: COMPLETE
+- iteration >= max_iterations: ESCALATE
+- otherwise: CONTINUE
+
+Respond with JSON:
+{
+    "confidence": 0.0-1.0,
+    "confidence_breakdown": {
+        "hypothesis_base": 0.0-1.0,
+        "evidence_support": -0.2 to 0.3,
+        "gap_penalty": -0.3 to 0,
+        "final": 0.0-1.0
+    },
+    "decision": "continue|complete|escalate",
+    "finding": {
+        "root_cause": "Description if confident",
+        "evidence": ["list", "of", "evidence"],
+        "recommendation": "What to do"
+    },
+    "escalation_reason": "Why escalating if applicable"
+}"""</span>),
+            (<span class="string">"human"</span>, <span class="string">"""
+## Hypotheses
+{hypotheses}
+
+## Observations  
+{observations}
+
+## Gaps
+{gaps}
+
+## Progress
+Iteration: {iteration} of {max_iterations}
+
+Calculate confidence and decide."""</span>)
+        ])
+        
+        chain = prompt | self.llm
+        response = <span class="keyword">await</span> chain.ainvoke({
+            <span class="string">"hypotheses"</span>: hypotheses,
+            <span class="string">"observations"</span>: observations,
+            <span class="string">"gaps"</span>: gaps,
+            <span class="string">"iteration"</span>: iteration,
+            <span class="string">"max_iterations"</span>: max_iterations,
+        })
+        
+        <span class="keyword">import</span> json
+        <span class="keyword">return</span> json.loads(response.content)</pre>
+            </div>
+        </section>
+
+        <!-- Specialized Agents -->
+        <section class="section">
+            <h2 class="section-title">Step 2: Specialized Agents</h2>
+            <p class="section-intro">
+                Each specialized agent extends BaseAgent with domain-specific expertise, tools, and prompts.
+            </p>
+
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card-header blue">Log Analysis Agent</div>
+                    <div class="card-body">
+                        <p><strong>Domain:</strong> Log pattern analysis, error correlation</p>
+                        <ul>
+                            <li>log_search</li>
+                            <li>log_tail</li>
+                            <li>log_aggregate</li>
+                            <li>log_patterns</li>
+                            <li>trace_lookup</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header purple">Code Analysis Agent</div>
+                    <div class="card-body">
+                        <p><strong>Domain:</strong> Code review, change analysis</p>
+                        <ul>
+                            <li>git_diff</li>
+                            <li>code_search</li>
+                            <li>ast_analyze</li>
+                            <li>dependency_check</li>
+                            <li>blame_lookup</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header teal">Infrastructure Agent</div>
+                    <div class="card-body">
+                        <p><strong>Domain:</strong> Kubernetes, cloud resources</p>
+                        <ul>
+                            <li>kubectl_get</li>
+                            <li>pod_logs</li>
+                            <li>metrics_query</li>
+                            <li>node_status</li>
+                            <li>hpa_status</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header orange">Database Agent</div>
+                    <div class="card-body">
+                        <p><strong>Domain:</strong> Query analysis, performance</p>
+                        <ul>
+                            <li>explain_query</li>
+                            <li>slow_query_log</li>
+                            <li>table_stats</li>
+                            <li>lock_monitor</li>
+                            <li>connection_pool</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header red">Security Agent</div>
+                    <div class="card-body">
+                        <p><strong>Domain:</strong> Security incidents, vulnerabilities</p>
+                        <ul>
+                            <li>vuln_scan</li>
+                            <li>access_audit</li>
+                            <li>secret_scan</li>
+                            <li>compliance_check</li>
+                            <li>threat_intel</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header green">Swarm Coordinator</div>
+                    <div class="card-body">
+                        <p><strong>Domain:</strong> Multi-agent synthesis</p>
+                        <ul>
+                            <li>Conflict resolution</li>
+                            <li>Evidence aggregation</li>
+                            <li>Root cause synthesis</li>
+                            <li>Confidence weighting</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="code-header">
+                <span>src/agents/log_agent.py</span>
+                <span>python</span>
+            </div>
+            <div class="code-block">
+<pre><span class="string">"""Log Analysis Agent Implementation"""</span>
+
+<span class="keyword">from</span> src.agents.base_agent <span class="keyword">import</span> BaseAgent, AgentConfig
+<span class="keyword">from</span> src.tools.log_tools <span class="keyword">import</span> (
+    log_search, log_tail, log_aggregate, log_patterns, trace_lookup
+)
+
+
+<span class="keyword">class</span> <span class="class">LogAnalysisAgent</span>(BaseAgent):
+    <span class="string">"""
+    Specialized agent for log analysis and pattern recognition.
+    
+    Expertise:
+    - Error pattern identification
+    - Log correlation across services
+    - Anomaly detection in log streams
+    - Trace analysis for distributed systems
+    """</span>
+    
+    <span class="keyword">def</span> <span class="function">__init__</span>(self):
+        config = AgentConfig(
+            agent_id=<span class="string">"log_agent"</span>,
+            domain=<span class="string">"log_analysis"</span>,
+            description=<span class="string">"Expert in log analysis and pattern recognition"</span>,
+            primary_model=<span class="string">"claude-sonnet-4-20250514"</span>,
+            max_tool_calls=<span class="number">5</span>,
+        )
+        
+        tools = [log_search, log_tail, log_aggregate, log_patterns, trace_lookup]
+        <span class="keyword">super</span>().__init__(config, tools)
+    
+    <span class="decorator">@property</span>
+    <span class="keyword">def</span> <span class="function">system_prompt</span>(self) -> <span class="type">str</span>:
+        <span class="keyword">return</span> <span class="string">"""# Log Analysis Agent
+
+## Identity
+You are a Log Analysis Agent, specialized in investigating technical 
+issues through log analysis and pattern recognition.
+
+## Domain Expertise
+- Pattern recognition in structured and unstructured logs
+- Error correlation across distributed systems
+- Anomaly detection in log streams
+- Trace analysis for microservices architectures
+- Time-series analysis of log volumes
+
+## Available Tools
+- **log_search**: Query logs with filters (service, level, time range)
+- **log_tail**: Stream recent logs from specific service
+- **log_aggregate**: Aggregate log counts by field (error type, status)
+- **log_patterns**: Identify common patterns/anomalies
+- **trace_lookup**: Find distributed traces by trace_id
+
+## Investigation Patterns
+1. Start with broad time-window search around incident
+2. Identify error spikes or anomalies
+3. Narrow to specific services showing issues
+4. Correlate with upstream/downstream services
+5. Extract trace IDs for distributed tracing
+
+## DO
+- Always specify time ranges to limit search scope
+- Use aggregations before diving into individual logs
+- Correlate errors across services
+- Look for patterns, not just individual errors
+
+## DO NOT
+- Search without time bounds (resource intensive)
+- Ignore upstream/downstream services
+- Make conclusions from single log entries
+- Assume causation from correlation alone"""</span></pre>
+            </div>
+        </section>
+
+        <!-- Multi-Agent Swarm -->
+        <section class="section">
+            <h2 class="section-title">Step 3: Multi-Agent Swarm Graph</h2>
+            <p class="section-intro">
+                For complex investigations, multiple agents work in parallel with a coordinator synthesizing their findings.
+            </p>
+
+            <div class="code-header">
+                <span>src/graphs/swarm_graph.py</span>
+                <span>python</span>
+            </div>
+            <div class="code-block">
+<pre><span class="string">"""
+Multi-Agent Swarm Graph
+
+Implements parallel agent execution with coordinator synthesis.
+"""</span>
+
+<span class="keyword">from</span> typing <span class="keyword">import</span> TypedDict, List, Annotated
+<span class="keyword">import</span> operator
+<span class="keyword">from</span> langgraph.graph <span class="keyword">import</span> StateGraph, START, END
+<span class="keyword">from</span> langsmith <span class="keyword">import</span> traceable
+
+
+<span class="keyword">class</span> <span class="class">SwarmState</span>(TypedDict):
+    <span class="string">"""State for multi-agent swarm execution."""</span>
+    ticket_id: <span class="type">str</span>
+    ticket_description: <span class="type">str</span>
+    
+    <span class="comment"># Findings from each agent (accumulated)</span>
+    agent_findings: Annotated[List[<span class="type">dict</span>], operator.add]
+    
+    <span class="comment"># Coordinator synthesis</span>
+    synthesized_root_cause: <span class="type">str</span>
+    conflicts_resolved: List[<span class="type">dict</span>]
+    final_confidence: <span class="type">float</span>
+    final_recommendation: <span class="type">str</span>
+
+
+<span class="decorator">@traceable</span>(name=<span class="string">"swarm_log_agent"</span>)
+<span class="keyword">async def</span> <span class="function">log_agent_node</span>(state: SwarmState) -> <span class="type">dict</span>:
+    <span class="string">"""Execute Log Agent investigation."""</span>
+    <span class="keyword">from</span> src.agents.log_agent <span class="keyword">import</span> LogAnalysisAgent
+    <span class="keyword">from</span> src.graphs.harness_graph <span class="keyword">import</span> compile_harness_graph
+    <span class="keyword">from</span> src.state.harness_state <span class="keyword">import</span> create_initial_state
+    
+    agent = LogAnalysisAgent()
+    graph = compile_harness_graph(agent)
+    
+    initial = create_initial_state(
+        ticket_id=state[<span class="string">"ticket_id"</span>],
+        ticket_description=state[<span class="string">"ticket_description"</span>],
+        agent_id=<span class="string">"log_agent"</span>,
+    )
+    
+    result = <span class="keyword">await</span> graph.ainvoke(initial, {<span class="string">"configurable"</span>: {<span class="string">"thread_id"</span>: <span class="string">f"swarm-log-{state['ticket_id']}"</span>}})
+    
+    <span class="keyword">return</span> {
+        <span class="string">"agent_findings"</span>: [{
+            <span class="string">"agent_id"</span>: <span class="string">"log_agent"</span>,
+            <span class="string">"finding"</span>: result.get(<span class="string">"finding"</span>),
+            <span class="string">"confidence"</span>: result.get(<span class="string">"current_confidence"</span>, <span class="number">0</span>),
+            <span class="string">"observations"</span>: result.get(<span class="string">"observations"</span>, []),
+        }]
+    }
+
+
+<span class="decorator">@traceable</span>(name=<span class="string">"swarm_code_agent"</span>)
+<span class="keyword">async def</span> <span class="function">code_agent_node</span>(state: SwarmState) -> <span class="type">dict</span>:
+    <span class="string">"""Execute Code Agent investigation."""</span>
+    <span class="comment"># Similar pattern to log_agent_node</span>
+    <span class="keyword">from</span> src.agents.code_agent <span class="keyword">import</span> CodeAnalysisAgent
+    <span class="comment"># ... implementation</span>
+    <span class="keyword">return</span> {<span class="string">"agent_findings"</span>: [{<span class="string">"agent_id"</span>: <span class="string">"code_agent"</span>, ...}]}
+
+
+<span class="decorator">@traceable</span>(name=<span class="string">"swarm_infra_agent"</span>)
+<span class="keyword">async def</span> <span class="function">infra_agent_node</span>(state: SwarmState) -> <span class="type">dict</span>:
+    <span class="string">"""Execute Infrastructure Agent investigation."""</span>
+    <span class="keyword">from</span> src.agents.infra_agent <span class="keyword">import</span> InfrastructureAgent
+    <span class="comment"># ... implementation</span>
+    <span class="keyword">return</span> {<span class="string">"agent_findings"</span>: [{<span class="string">"agent_id"</span>: <span class="string">"infra_agent"</span>, ...}]}
+
+
+<span class="decorator">@traceable</span>(name=<span class="string">"swarm_coordinator"</span>)
+<span class="keyword">async def</span> <span class="function">coordinator_node</span>(state: SwarmState) -> <span class="type">dict</span>:
+    <span class="string">"""
+    Coordinator: Synthesize findings from all agents.
+    
+    - Detect conflicts between agent findings
+    - Resolve conflicts using evidence weighting
+    - Synthesize unified root cause
+    - Calculate aggregate confidence
+    """</span>
+    <span class="keyword">from</span> langchain_anthropic <span class="keyword">import</span> ChatAnthropic
+    <span class="keyword">from</span> langchain_core.prompts <span class="keyword">import</span> ChatPromptTemplate
+    
+    llm = ChatAnthropic(model=<span class="string">"claude-sonnet-4-20250514"</span>)
+    
+    prompt = ChatPromptTemplate.from_messages([
+        (<span class="string">"system"</span>, <span class="string">"""# Swarm Coordinator
+
+You synthesize findings from multiple specialized agents.
+
+## Your Tasks
+1. Identify agreements and conflicts between agents
+2. Resolve conflicts using evidence strength
+3. Synthesize a unified root cause analysis
+4. Calculate aggregate confidence
+5. Generate final recommendation
+
+Respond with JSON:
+{
+    "conflicts": [{"agents": ["A", "B"], "issue": "...", "resolution": "..."}],
+    "synthesized_root_cause": "Unified analysis",
+    "confidence": 0.0-1.0,
+    "recommendation": "What to do next"
+}"""</span>),
+        (<span class="string">"human"</span>, <span class="string">"""## Agent Findings
+{findings}
+
+Synthesize these into a unified analysis."""</span>)
+    ])
+    
+    chain = prompt | llm
+    response = <span class="keyword">await</span> chain.ainvoke({<span class="string">"findings"</span>: state[<span class="string">"agent_findings"</span>]})
+    
+    <span class="keyword">import</span> json
+    result = json.loads(response.content)
+    
+    <span class="keyword">return</span> {
+        <span class="string">"synthesized_root_cause"</span>: result[<span class="string">"synthesized_root_cause"</span>],
+        <span class="string">"conflicts_resolved"</span>: result.get(<span class="string">"conflicts"</span>, []),
+        <span class="string">"final_confidence"</span>: result[<span class="string">"confidence"</span>],
+        <span class="string">"final_recommendation"</span>: result[<span class="string">"recommendation"</span>],
+    }
+
+
+<span class="keyword">def</span> <span class="function">build_swarm_graph</span>() -> StateGraph:
+    <span class="string">"""Build multi-agent swarm graph with parallel execution."""</span>
+    graph = StateGraph(SwarmState)
+    
+    <span class="comment"># Add agent nodes</span>
+    graph.add_node(<span class="string">"log_agent"</span>, log_agent_node)
+    graph.add_node(<span class="string">"code_agent"</span>, code_agent_node)
+    graph.add_node(<span class="string">"infra_agent"</span>, infra_agent_node)
+    graph.add_node(<span class="string">"coordinator"</span>, coordinator_node)
+    
+    <span class="comment"># Parallel execution from START to all agents</span>
+    graph.add_edge(START, <span class="string">"log_agent"</span>)
+    graph.add_edge(START, <span class="string">"code_agent"</span>)
+    graph.add_edge(START, <span class="string">"infra_agent"</span>)
+    
+    <span class="comment"># All agents converge at coordinator</span>
+    graph.add_edge(<span class="string">"log_agent"</span>, <span class="string">"coordinator"</span>)
+    graph.add_edge(<span class="string">"code_agent"</span>, <span class="string">"coordinator"</span>)
+    graph.add_edge(<span class="string">"infra_agent"</span>, <span class="string">"coordinator"</span>)
+    
+    <span class="comment"># Coordinator to END</span>
+    graph.add_edge(<span class="string">"coordinator"</span>, END)
+    
+    <span class="keyword">return</span> graph.compile()</pre>
+            </div>
+
+            <div class="callout success">
+                <div class="callout-title">✅ Parallel Execution</div>
+                <p>LangGraph automatically executes nodes in parallel when they share the same predecessor. In this swarm graph, log_agent, code_agent, and infra_agent all run concurrently from START, then their findings are accumulated and passed to the coordinator.</p>
+            </div>
+        </section>
+
+        <!-- Navigation -->
+        <div class="nav-footer">
+            <a href="haci_langsmith_2_graph.html" class="nav-btn">
+                ← Previous: Graph Architecture
+            </a>
+            <a href="haci_langsmith_4_observability.html" class="nav-btn">
+                Next: Observability & Deployment →
+            </a>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-stats">
+            <div class="footer-stat">
+                <div class="footer-stat-value">BaseAgent</div>
+                <div class="footer-stat-label">Abstract Class</div>
+            </div>
+            <div class="footer-stat">
+                <div class="footer-stat-value">Specialized</div>
+                <div class="footer-stat-label">6 Agents</div>
+            </div>
+            <div class="footer-stat">
+                <div class="footer-stat-value">Parallel</div>
+                <div class="footer-stat-label">Swarm Execution</div>
+            </div>
+        </div>
+        <p>HACI Implementation Guide • LangSmith Edition</p>
+        <p style="opacity: 0.7; margin-top: 0.5rem;">Page 3 of 4 • Agent Implementation</p>
+    </footer>
+</body>
+</html>

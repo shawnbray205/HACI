@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HACI on LangSmith - Complete Implementation Guide</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --secondary: #7c3aed;
+            --success: #059669;
+            --warning: #d97706;
+            --info: #0891b2;
+            --langchain-green: #10b981;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: var(--gray-800); background: var(--gray-50); }
+
+        .nav { position: sticky; top: 0; background: white; border-bottom: 1px solid var(--gray-200); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; z-index: 100; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .nav-brand { font-weight: 700; font-size: 1.25rem; color: var(--gray-900); }
+        .nav-brand span { color: var(--langchain-green); }
+        .nav-links { display: flex; gap: 0.5rem; align-items: center; }
+        .nav-links a { color: var(--gray-600); text-decoration: none; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.875rem; transition: all 0.2s; }
+        .nav-links a:hover { background: var(--gray-100); color: var(--gray-900); }
+
+        .hero { background: linear-gradient(135deg, var(--langchain-green), var(--primary), var(--secondary)); color: white; padding: 5rem 2rem; text-align: center; position: relative; overflow: hidden; }
+        .hero::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='m36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm-30 30v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"); }
+        .hero-content { position: relative; z-index: 1; }
+        .hero h1 { font-size: 3rem; margin-bottom: 1rem; font-weight: 800; }
+        .hero .subtitle { font-size: 1.5rem; opacity: 0.95; max-width: 700px; margin: 0 auto 1.5rem; }
+        .hero .description { font-size: 1.125rem; opacity: 0.9; max-width: 800px; margin: 0 auto; }
+
+        .stats-bar { background: white; border-bottom: 1px solid var(--gray-200); padding: 2rem; display: flex; justify-content: center; gap: 4rem; flex-wrap: wrap; }
+        .stat { text-align: center; }
+        .stat-value { font-size: 2rem; font-weight: 700; background: linear-gradient(135deg, var(--langchain-green), var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .stat-label { font-size: 0.875rem; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.05em; }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 3rem 2rem; }
+        .section { margin-bottom: 4rem; }
+        .section-title { font-size: 2rem; font-weight: 700; color: var(--gray-900); margin-bottom: 1.5rem; text-align: center; }
+        .section-subtitle { color: var(--gray-600); text-align: center; max-width: 700px; margin: -1rem auto 2rem; font-size: 1.125rem; }
+
+        .chapters-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1.5rem; margin: 2rem 0; }
+        .chapter-card { background: white; border-radius: 16px; padding: 1.75rem; border: 1px solid var(--gray-200); transition: all 0.3s; text-decoration: none; display: block; position: relative; overflow: hidden; }
+        .chapter-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0,0,0,0.12); border-color: var(--langchain-green); }
+        .chapter-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, var(--langchain-green), var(--primary)); transform: scaleX(0); transition: transform 0.3s; transform-origin: left; }
+        .chapter-card:hover::before { transform: scaleX(1); }
+        .chapter-number { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: linear-gradient(135deg, var(--langchain-green), var(--primary)); color: white; border-radius: 10px; font-weight: 700; font-size: 1.125rem; margin-bottom: 1rem; }
+        .chapter-card h3 { color: var(--gray-900); font-size: 1.25rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.75rem; }
+        .chapter-card h3::after { content: '→'; color: var(--langchain-green); opacity: 0; transform: translateX(-10px); transition: all 0.3s; }
+        .chapter-card:hover h3::after { opacity: 1; transform: translateX(0); }
+        .chapter-card p { color: var(--gray-600); font-size: 0.9375rem; margin-bottom: 1rem; }
+        .chapter-topics { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+        .topic-tag { background: var(--gray-100); color: var(--gray-700); padding: 0.25rem 0.625rem; border-radius: 6px; font-size: 0.75rem; font-weight: 500; }
+
+        .foundation-section { background: linear-gradient(135deg, rgba(16,185,129,0.05), rgba(37,99,235,0.05)); border-radius: 20px; padding: 2.5rem; margin: 3rem 0; }
+        .foundation-section h3 { color: var(--gray-900); font-size: 1.5rem; margin-bottom: 1rem; text-align: center; }
+        .foundation-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-top: 1.5rem; }
+        .foundation-item { background: white; border-radius: 12px; padding: 1.25rem; text-align: center; border: 1px solid var(--gray-200); }
+        .foundation-item .icon { font-size: 2rem; margin-bottom: 0.5rem; }
+        .foundation-item h4 { color: var(--gray-800); font-size: 1rem; margin-bottom: 0.375rem; }
+        .foundation-item p { color: var(--gray-600); font-size: 0.8125rem; }
+
+        .prereq-section { background: white; border: 1px solid var(--gray-200); border-radius: 16px; padding: 2rem; margin: 2rem 0; }
+        .prereq-section h3 { color: var(--gray-900); font-size: 1.25rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem; }
+        .prereq-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+        .prereq-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; background: var(--gray-50); border-radius: 8px; }
+        .prereq-item .check { color: var(--success); font-size: 1.25rem; }
+        .prereq-item span { color: var(--gray-700); font-size: 0.9375rem; }
+
+        .quick-start { background: linear-gradient(135deg, var(--langchain-green), var(--primary)); border-radius: 16px; padding: 2.5rem; margin: 3rem 0; color: white; text-align: center; }
+        .quick-start h3 { font-size: 1.5rem; margin-bottom: 1rem; }
+        .quick-start p { opacity: 0.95; margin-bottom: 1.5rem; max-width: 600px; margin-left: auto; margin-right: auto; }
+        .quick-start .btn { display: inline-block; background: white; color: var(--primary); padding: 0.875rem 2rem; border-radius: 8px; font-weight: 600; text-decoration: none; transition: all 0.2s; }
+        .quick-start .btn:hover { transform: scale(1.05); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+
+        .timeline { position: relative; padding-left: 2rem; margin: 2rem 0; }
+        .timeline::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: linear-gradient(180deg, var(--langchain-green), var(--primary), var(--secondary)); }
+        .timeline-item { position: relative; padding-bottom: 2rem; }
+        .timeline-item:last-child { padding-bottom: 0; }
+        .timeline-item::before { content: ''; position: absolute; left: -2rem; top: 0.25rem; width: 12px; height: 12px; background: white; border: 3px solid var(--langchain-green); border-radius: 50%; transform: translateX(-5px); }
+        .timeline-item h4 { color: var(--gray-900); font-size: 1rem; margin-bottom: 0.25rem; }
+        .timeline-item p { color: var(--gray-600); font-size: 0.875rem; }
+
+        .footer { background: var(--gray-900); color: white; padding: 3rem 2rem; text-align: center; margin-top: 4rem; }
+        .footer h3 { font-size: 1.5rem; margin-bottom: 1rem; }
+        .footer p { opacity: 0.8; max-width: 600px; margin: 0 auto 1.5rem; }
+        .footer-links { display: flex; justify-content: center; gap: 2rem; flex-wrap: wrap; }
+        .footer-links a { color: var(--langchain-green); text-decoration: none; font-weight: 500; }
+        .footer-links a:hover { text-decoration: underline; }
+
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2rem; }
+            .hero .subtitle { font-size: 1.125rem; }
+            .stats-bar { gap: 2rem; }
+            .chapters-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-brand">HACI on <span>LangSmith</span></div>
+        <div class="nav-links">
+            <a href="#chapters">Chapters</a>
+            <a href="#prerequisites">Prerequisites</a>
+            <a href="haci_langsmith_1_setup.html">Start Guide →</a>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="hero-content">
+            <h1>🦜🔗 HACI on LangSmith</h1>
+            <p class="subtitle">Complete Implementation Guide</p>
+            <p class="description">Build a production-ready Harness-Enhanced Agentic Collaborative Intelligence system using LangGraph and LangSmith. From setup to deployment in 10 comprehensive chapters.</p>
+        </div>
+    </header>
+
+    <div class="stats-bar">
+        <div class="stat">
+            <div class="stat-value">10</div>
+            <div class="stat-label">Chapters</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">50+</div>
+            <div class="stat-label">Code Examples</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">4</div>
+            <div class="stat-label">Execution Modes</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">100%</div>
+            <div class="stat-label">Production Ready</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <section class="foundation-section">
+            <h3>🏗️ What You'll Build</h3>
+            <p style="text-align: center; color: var(--gray-600); max-width: 700px; margin: 0 auto;">A complete AI automation system with calibrated autonomy, human oversight, and enterprise-grade observability</p>
+            <div class="foundation-grid">
+                <div class="foundation-item">
+                    <div class="icon">🎯</div>
+                    <h4>THINK Phase</h4>
+                    <p>Hypothesis generation & planning</p>
+                </div>
+                <div class="foundation-item">
+                    <div class="icon">⚡</div>
+                    <h4>ACT Phase</h4>
+                    <p>Tool execution & data gathering</p>
+                </div>
+                <div class="foundation-item">
+                    <div class="icon">👁️</div>
+                    <h4>OBSERVE Phase</h4>
+                    <p>Result analysis & synthesis</p>
+                </div>
+                <div class="foundation-item">
+                    <div class="icon">✅</div>
+                    <h4>EVALUATE Phase</h4>
+                    <p>Quality gates & routing</p>
+                </div>
+                <div class="foundation-item">
+                    <div class="icon">🤝</div>
+                    <h4>HARNESS Phase</h4>
+                    <p>Human approval workflows</p>
+                </div>
+                <div class="foundation-item">
+                    <div class="icon">🐝</div>
+                    <h4>Swarm Mode</h4>
+                    <p>Multi-agent coordination</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="section" id="chapters">
+            <h2 class="section-title">📚 Guide Chapters</h2>
+            <p class="section-subtitle">Click any chapter to dive into detailed implementation with complete code examples</p>
+            
+            <div class="chapters-grid">
+                <a href="haci_langsmith_1_setup.html" class="chapter-card">
+                    <div class="chapter-number">1</div>
+                    <h3>Setup & Prerequisites</h3>
+                    <p>Configure your development environment with LangGraph, LangSmith, and all required dependencies.</p>
+                    <div class="chapter-topics">
+                        <span class="topic-tag">Environment Setup</span>
+                        <span class="topic-tag">API Keys</span>
+                        <span class="topic-tag">Project Structure</span>
+                        <span class="topic-tag">Dependencies</span>
+                    </div>
+                </a>
+
+                <a href="haci_langsmith_2_graph.html" class="chapter-card">
+                    <div class="chapter-number">2</div>
+                    <h3>Graph Architecture</h3>
+                    <p>Design the state schema and build the core LangGraph structure for HACI's investigation workflow.</p>
+                    <div class="chapter-topics">
+                        <span class="topic-tag">StateGraph</span>
+                        <span class="topic-tag">TypedDict</span>
+                        <span class="topic-tag">Reducers</span>
+                        <span class="topic-tag">Edges</span>
+                    </div>
+                </a>
+
+                <a href="haci_langsmith_3_agents.html" class="chapter-card">
+                    <div class="chapter-number">3</div>
+                    <h3>Agent Implementation</h3>
+                    <p>Build specialized agents for different domains with tool integration and LLM orchestration.</p>
+                    <div class="chapter-topics">
+                        <span class="topic-tag">Tool Binding</span>
+                        <span class="topic-tag">Agent Prompts</span>
+                        <span class="topic-tag">Specialization</span>
+                        <span class="topic-tag">Error Handling</span>
+                    </div>
+                </a>
+
+                <a href="haci_langsmith_4_observability.html" class="chapter-card">
+                    <div class="chapter-number">4</div>
+                    <h3>Observability</h3>
+                    <p>Implement comprehensive tracing, monitoring, and debugging with LangSmith integration.</p>
+                    <div class="chapter-topics">
+                        <span class="topic-tag">@traceable</span>
+                        <span class="topic-tag">Trace Trees</span>
+                        <span class="topic-tag">Metadata</span>
+                        <span class="topic-tag">Dashboards</span>
+                    </div>
+                </a>
+
+                <a href="haci_langsmith_5_harness_phases.html" class="chapter-card">
+                    <div class="chapter-number">5</div>
+                    <h3>Harness Phases</h3>
+                    <p>Deep dive into THINK, ACT, OBSERVE, EVALUATE phases with complete node implementations.</p>
+                    <div class="chapter-topics">
+                        <span class="topic-tag">THINK Node</span>
+                        <span class="topic-tag">ACT Node</span>
+                        <span class="topic-tag">OBSERVE Node</span>
+                        <span class="topic-tag">EVALUATE Node</span>
+                    </div>
+                </a>
+
+                <a href="haci_langsmith_6_swarm.html" class="chapter-card">
+                    <div class="chapter-number">6</div>
+                    <h3>Swarm Coordination</h3>
+                    <p>Orchestrate multiple specialist agents with parallel execution and result synthesis.</p>
+                    <div class="chapter-topics">
+                        <span class="topic-tag">Parallel Execution</span>
+                        <span class="topic-tag">Synthesizer</span>
+                        <span class="topic-tag">Send API</span>
+                        <span class="topic-tag">Coordination</span>
+                    </div>
+                </a>
+
+                <a href="haci_langsmith_7_context.html" class="chapter-card">
+                    <div class="chapter-number">7</div>
+                    <h3>Context Engineering</h3>
+                    <p>Implement multi-layer context injection with token budgets and dynamic retrieval.</p>
+                    <div class="chapter-topics">
+                        <span class="topic-tag">Layer Architecture</span>
+                        <span class="topic-tag">Token Budgets</span>
+                        <span class="topic-tag">RAG Integration</span>
+                        <span class="topic-tag">Caching</span>
+                    </div>
+                </a>
+
+                <a href="haci_langsmith_8_hitl.html" class="chapter-card">
+                    <div class="chapter-number">8</div>
+                    <h3>Human-in-the-Loop</h3>
+                    <p>Build approval workflows with interrupts, risk assessment, and calibrated autonomy.</p>
+                    <div class="chapter-topics">
+                        <span class="topic-tag">Interrupts</span>
+                        <span class="topic-tag">Risk Levels</span>
+                        <span class="topic-tag">Approval Gates</span>
+                        <span class="topic-tag">Timeouts</span>
+                    </div>
+                </a>
+
+                <a href="haci_langsmith_9_testing.html" class="chapter-card">
+                    <div class="chapter-number">9</div>
+                    <h3>Testing & Evaluation</h3>
+                    <p>Create comprehensive test suites with LangSmith datasets and custom evaluators.</p>
+                    <div class="chapter-topics">
+                        <span class="topic-tag">Unit Tests</span>
+                        <span class="topic-tag">Datasets</span>
+                        <span class="topic-tag">Evaluators</span>
+                        <span class="topic-tag">CI/CD</span>
+                    </div>
+                </a>
+
+                <a href="haci_langsmith_10_deployment.html" class="chapter-card">
+                    <div class="chapter-number">10</div>
+                    <h3>Production Deployment</h3>
+                    <p>Deploy to production with Docker, Kubernetes, monitoring, and operational best practices.</p>
+                    <div class="chapter-topics">
+                        <span class="topic-tag">Docker</span>
+                        <span class="topic-tag">Kubernetes</span>
+                        <span class="topic-tag">FastAPI</span>
+                        <span class="topic-tag">Monitoring</span>
+                    </div>
+                </a>
+            </div>
+        </section>
+
+        <section class="prereq-section" id="prerequisites">
+            <h3>✅ Prerequisites</h3>
+            <div class="prereq-grid">
+                <div class="prereq-item">
+                    <span class="check">✓</span>
+                    <span>Python 3.10+</span>
+                </div>
+                <div class="prereq-item">
+                    <span class="check">✓</span>
+                    <span>LangSmith Account</span>
+                </div>
+                <div class="prereq-item">
+                    <span class="check">✓</span>
+                    <span>Anthropic API Key</span>
+                </div>
+                <div class="prereq-item">
+                    <span class="check">✓</span>
+                    <span>Docker (for deployment)</span>
+                </div>
+                <div class="prereq-item">
+                    <span class="check">✓</span>
+                    <span>PostgreSQL (state persistence)</span>
+                </div>
+                <div class="prereq-item">
+                    <span class="check">✓</span>
+                    <span>Redis (optional caching)</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2 class="section-title">📈 Learning Path</h2>
+            <p class="section-subtitle">Recommended progression through the guide</p>
+            
+            <div class="timeline">
+                <div class="timeline-item">
+                    <h4>🚀 Getting Started (Chapters 1-2)</h4>
+                    <p>Set up your environment and understand the graph architecture fundamentals.</p>
+                </div>
+                <div class="timeline-item">
+                    <h4>🔧 Core Implementation (Chapters 3-5)</h4>
+                    <p>Build agents, implement harness phases, and add observability.</p>
+                </div>
+                <div class="timeline-item">
+                    <h4>🐝 Advanced Features (Chapters 6-8)</h4>
+                    <p>Add swarm coordination, context engineering, and human oversight.</p>
+                </div>
+                <div class="timeline-item">
+                    <h4>🏭 Production Ready (Chapters 9-10)</h4>
+                    <p>Test thoroughly and deploy with monitoring and best practices.</p>
+                </div>
+            </div>
+        </section>
+
+        <div class="quick-start">
+            <h3>🚀 Ready to Build?</h3>
+            <p>Start with Chapter 1 to set up your development environment and begin building your HACI implementation.</p>
+            <a href="haci_langsmith_1_setup.html" class="btn">Begin Chapter 1 →</a>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <h3>HACI Implementation Guide</h3>
+        <p>Build enterprise-grade AI automation with calibrated autonomy and human oversight using LangGraph and LangSmith.</p>
+        <div class="footer-links">
+            <a href="https://langchain-ai.github.io/langgraph/">LangGraph Docs</a>
+            <a href="https://docs.smith.langchain.com/">LangSmith Docs</a>
+            <a href="https://docs.anthropic.com/">Anthropic Docs</a>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HACI on LangSmith - Observability & Deployment</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --purple-color: #9b59b6;
+            --teal-color: #1abc9c;
+            --langchain-green: #00A67E;
+            --light-bg: #ecf0f1;
+            --white: #ffffff;
+            --text-color: #2c3e50;
+            --text-light: #7f8c8d;
+            --border-color: #bdc3c7;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background: var(--white);
+        }
+
+        .nav {
+            position: sticky;
+            top: 0;
+            background: var(--primary-color);
+            padding: 1rem 2rem;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .nav-brand { color: var(--white); font-size: 1.5rem; font-weight: 700; text-decoration: none; }
+        .nav-brand span { color: var(--langchain-green); }
+        .nav-links { display: flex; gap: 2rem; align-items: center; }
+        .nav-links a { color: rgba(255,255,255,0.8); text-decoration: none; font-size: 0.95rem; transition: color 0.3s; }
+        .nav-links a:hover, .nav-links a.active { color: var(--white); }
+        .page-indicator { background: var(--langchain-green); color: var(--white); padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.85rem; }
+
+        .hero {
+            background: linear-gradient(135deg, var(--teal-color) 0%, var(--primary-color) 50%, var(--langchain-green) 100%);
+            color: var(--white);
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+
+        .hero h1 { font-size: 2.8rem; margin-bottom: 1rem; font-weight: 700; }
+        .hero .subtitle { font-size: 1.3rem; opacity: 0.95; max-width: 700px; margin: 0 auto; }
+
+        .stats-bar {
+            background: var(--primary-color);
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: center;
+            gap: 4rem;
+            flex-wrap: wrap;
+        }
+
+        .stat-item { text-align: center; color: var(--white); }
+        .stat-value { font-size: 2rem; font-weight: 700; color: var(--langchain-green); }
+        .stat-label { font-size: 0.85rem; opacity: 0.8; text-transform: uppercase; letter-spacing: 1px; }
+
+        .main-content { max-width: 1200px; margin: 0 auto; padding: 3rem 2rem; }
+        .section { margin-bottom: 4rem; }
+
+        .section-title {
+            font-size: 2rem;
+            color: var(--primary-color);
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            position: relative;
+            text-align: center;
+        }
+
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 3px;
+            background: linear-gradient(90deg, var(--langchain-green), var(--teal-color));
+            border-radius: 2px;
+        }
+
+        .section-intro { text-align: center; max-width: 800px; margin: 0 auto 2rem; color: var(--text-light); font-size: 1.1rem; }
+
+        .code-block {
+            background: #1e1e1e;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            overflow-x: auto;
+        }
+
+        .code-block pre {
+            margin: 0;
+            color: #d4d4d4;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+
+        .code-block .keyword { color: #569cd6; }
+        .code-block .string { color: #ce9178; }
+        .code-block .comment { color: #6a9955; }
+        .code-block .function { color: #dcdcaa; }
+        .code-block .class { color: #4ec9b0; }
+        .code-block .number { color: #b5cea8; }
+        .code-block .decorator { color: #d7ba7d; }
+
+        .code-header {
+            background: #2d2d2d;
+            color: #ccc;
+            padding: 0.5rem 1rem;
+            border-radius: 10px 10px 0 0;
+            font-size: 0.85rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .code-header + .code-block { border-radius: 0 0 10px 10px; margin-top: 0; }
+
+        .callout { padding: 1.5rem; border-radius: 10px; margin: 1.5rem 0; border-left: 4px solid; }
+        .callout.info { background: #e8f4fd; border-color: var(--secondary-color); }
+        .callout.success { background: #e8f8f5; border-color: var(--langchain-green); }
+        .callout.warning { background: #fdf2e9; border-color: var(--warning-color); }
+        .callout-title { font-weight: 600; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        .callout.info .callout-title { color: var(--secondary-color); }
+        .callout.success .callout-title { color: var(--langchain-green); }
+        .callout.warning .callout-title { color: var(--warning-color); }
+
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin: 2rem 0; }
+
+        .card {
+            background: var(--white);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.08);
+            transition: transform 0.3s, box-shadow 0.3s;
+            border: 1px solid var(--border-color);
+        }
+
+        .card:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,0,0,0.12); }
+
+        .card-header { padding: 1rem 1.5rem; color: var(--white); font-weight: 600; font-size: 1rem; }
+        .card-header.green { background: linear-gradient(135deg, var(--langchain-green), #00875A); }
+        .card-header.blue { background: linear-gradient(135deg, var(--secondary-color), #2980b9); }
+        .card-header.purple { background: linear-gradient(135deg, var(--purple-color), #8e44ad); }
+        .card-header.teal { background: linear-gradient(135deg, var(--teal-color), #16a085); }
+        .card-header.orange { background: linear-gradient(135deg, var(--warning-color), #e67e22); }
+
+        .card-body { padding: 1.5rem; }
+        .card-body p { margin-bottom: 0.5rem; color: var(--text-light); font-size: 0.9rem; }
+        .card-body ul { padding-left: 1.2rem; margin-top: 0.5rem; }
+        .card-body li { margin-bottom: 0.3rem; color: var(--text-color); font-size: 0.9rem; }
+
+        .table-container { overflow-x: auto; margin: 1.5rem 0; }
+
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--white);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.08);
+        }
+
+        .info-table th {
+            background: var(--primary-color);
+            color: var(--white);
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .info-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--light-bg);
+        }
+
+        .info-table tr:last-child td { border-bottom: none; }
+        .info-table tr:hover td { background: var(--light-bg); }
+
+        .nav-footer {
+            display: flex;
+            justify-content: space-between;
+            padding: 2rem 0;
+            border-top: 1px solid var(--border-color);
+            margin-top: 3rem;
+        }
+
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 1.5rem;
+            background: var(--light-bg);
+            border-radius: 8px;
+            text-decoration: none;
+            color: var(--primary-color);
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .nav-btn:hover { background: var(--langchain-green); color: var(--white); }
+        .nav-btn.disabled { opacity: 0.5; pointer-events: none; }
+
+        .footer {
+            background: var(--primary-color);
+            color: var(--white);
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .footer-stats { display: flex; justify-content: center; gap: 3rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        .footer-stat { text-align: center; }
+        .footer-stat-value { font-size: 1.5rem; font-weight: 700; color: var(--langchain-green); }
+        .footer-stat-label { font-size: 0.8rem; opacity: 0.7; text-transform: uppercase; }
+
+        .checklist { list-style: none; padding: 0; }
+        .checklist li { padding: 0.8rem 0; border-bottom: 1px solid var(--light-bg); display: flex; align-items: flex-start; gap: 0.8rem; }
+        .checklist li:last-child { border-bottom: none; }
+        .checklist-icon { color: var(--langchain-green); font-size: 1.2rem; }
+
+        @media (max-width: 768px) {
+            .nav-footer { flex-direction: column; gap: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <a href="#" class="nav-brand">HACI on <span>LangSmith</span></a>
+        <div class="nav-links">
+            <a href="haci_langsmith_1_setup.html">Setup</a>
+            <a href="haci_langsmith_2_graph.html">Graph Architecture</a>
+            <a href="haci_langsmith_3_agents.html">Agents</a>
+            <a href="#" class="active">Observability</a>
+            <span class="page-indicator">Page 4 of 4</span>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <h1>Observability & Deployment</h1>
+        <p class="subtitle">Configure LangSmith tracing, build evaluation datasets, monitor production, and deploy to LangGraph Platform</p>
+    </section>
+
+    <div class="stats-bar">
+        <div class="stat-item">
+            <div class="stat-value">100%</div>
+            <div class="stat-label">Trace Coverage</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">Real-Time</div>
+            <div class="stat-label">Monitoring</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">Automated</div>
+            <div class="stat-label">Evaluation</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">1-Click</div>
+            <div class="stat-label">Deploy</div>
+        </div>
+    </div>
+
+    <main class="main-content">
+        <!-- Custom Tracing -->
+        <section class="section">
+            <h2 class="section-title">Step 1: Custom Tracing Configuration</h2>
+            <p class="section-intro">
+                Add rich metadata to traces for filtering, grouping, and analysis in the LangSmith dashboard.
+            </p>
+
+            <div class="code-header">
+                <span>src/utils/tracing.py</span>
+                <span>python</span>
+            </div>
+            <div class="code-block">
+<pre><span class="string">"""
+Custom LangSmith Tracing Utilities
+
+Add rich metadata and custom spans to HACI traces.
+"""</span>
+
+<span class="keyword">from</span> typing <span class="keyword">import</span> Dict, Any, Optional
+<span class="keyword">from</span> functools <span class="keyword">import</span> wraps
+<span class="keyword">from</span> langsmith <span class="keyword">import</span> Client, traceable
+<span class="keyword">from</span> langsmith.run_helpers <span class="keyword">import</span> get_current_run_tree
+<span class="keyword">import</span> time
+
+
+<span class="comment"># Initialize LangSmith client</span>
+client = Client()
+
+
+<span class="keyword">def</span> <span class="function">haci_trace</span>(
+    name: <span class="type">str</span>,
+    run_type: <span class="type">str</span> = <span class="string">"chain"</span>,
+    tags: list = <span class="keyword">None</span>,
+    metadata: dict = <span class="keyword">None</span>,
+):
+    <span class="string">"""
+    Enhanced tracing decorator for HACI operations.
+    
+    Adds:
+    - HACI-specific tags
+    - Timing information
+    - Error classification
+    - Cost tracking
+    """</span>
+    <span class="keyword">def</span> <span class="function">decorator</span>(func):
+        <span class="decorator">@wraps</span>(func)
+        <span class="decorator">@traceable</span>(name=name, run_type=run_type)
+        <span class="keyword">async def</span> <span class="function">wrapper</span>(*args, **kwargs):
+            start_time = time.time()
+            
+            <span class="comment"># Add HACI tags</span>
+            run = get_current_run_tree()
+            <span class="keyword">if</span> run:
+                base_tags = [<span class="string">"haci"</span>, <span class="string">"v1"</span>]
+                run.add_tags(base_tags + (tags <span class="keyword">or</span> []))
+                
+                <span class="keyword">if</span> metadata:
+                    run.add_metadata(metadata)
+            
+            <span class="keyword">try</span>:
+                result = <span class="keyword">await</span> func(*args, **kwargs)
+                
+                <span class="comment"># Add timing metadata</span>
+                <span class="keyword">if</span> run:
+                    duration_ms = (time.time() - start_time) * <span class="number">1000</span>
+                    run.add_metadata({
+                        <span class="string">"duration_ms"</span>: duration_ms,
+                        <span class="string">"success"</span>: <span class="keyword">True</span>,
+                    })
+                
+                <span class="keyword">return</span> result
+                
+            <span class="keyword">except</span> Exception <span class="keyword">as</span> e:
+                <span class="keyword">if</span> run:
+                    run.add_metadata({
+                        <span class="string">"success"</span>: <span class="keyword">False</span>,
+                        <span class="string">"error_type"</span>: <span class="type">type</span>(e).__name__,
+                        <span class="string">"error_message"</span>: <span class="type">str</span>(e),
+                    })
+                    run.add_tags([<span class="string">"error"</span>, <span class="type">type</span>(e).__name__])
+                <span class="keyword">raise</span>
+        
+        <span class="keyword">return</span> wrapper
+    <span class="keyword">return</span> decorator
+
+
+<span class="keyword">class</span> <span class="class">HACITraceContext</span>:
+    <span class="string">"""
+    Context manager for adding HACI metadata to traces.
+    
+    Usage:
+        async with HACITraceContext(ticket_id="T-123", agent="log_agent"):
+            result = await graph.ainvoke(state, config)
+    """</span>
+    
+    <span class="keyword">def</span> <span class="function">__init__</span>(
+        self,
+        ticket_id: <span class="type">str</span>,
+        agent_id: <span class="type">str</span>,
+        execution_mode: <span class="type">str</span> = <span class="string">"single_agent"</span>,
+        customer_id: Optional[<span class="type">str</span>] = <span class="keyword">None</span>,
+    ):
+        self.metadata = {
+            <span class="string">"ticket_id"</span>: ticket_id,
+            <span class="string">"agent_id"</span>: agent_id,
+            <span class="string">"execution_mode"</span>: execution_mode,
+            <span class="string">"customer_id"</span>: customer_id,
+        }
+        self.tags = [<span class="string">"haci"</span>, agent_id, execution_mode]
+    
+    <span class="keyword">def</span> <span class="function">get_config</span>(self, thread_id: <span class="type">str</span>) -> Dict[<span class="type">str</span>, Any]:
+        <span class="string">"""Get LangGraph config with tracing metadata."""</span>
+        <span class="keyword">return</span> {
+            <span class="string">"configurable"</span>: {
+                <span class="string">"thread_id"</span>: thread_id,
+            },
+            <span class="string">"metadata"</span>: self.metadata,
+            <span class="string">"tags"</span>: self.tags,
+        }
+
+
+<span class="comment"># ============================================================================</span>
+<span class="comment"># Cost Tracking</span>
+<span class="comment"># ============================================================================</span>
+
+<span class="keyword">def</span> <span class="function">track_investigation_cost</span>(
+    ticket_id: <span class="type">str</span>,
+    input_tokens: <span class="type">int</span>,
+    output_tokens: <span class="type">int</span>,
+    model: <span class="type">str</span>,
+):
+    <span class="string">"""Log cost data as feedback for analysis."""</span>
+    <span class="comment"># Cost per 1M tokens (example rates)</span>
+    COSTS = {
+        <span class="string">"claude-sonnet-4-20250514"</span>: {<span class="string">"input"</span>: <span class="number">3.0</span>, <span class="string">"output"</span>: <span class="number">15.0</span>},
+        <span class="string">"gpt-4o"</span>: {<span class="string">"input"</span>: <span class="number">2.5</span>, <span class="string">"output"</span>: <span class="number">10.0</span>},
+    }
+    
+    rates = COSTS.get(model, {<span class="string">"input"</span>: <span class="number">0</span>, <span class="string">"output"</span>: <span class="number">0</span>})
+    cost = (
+        (input_tokens / <span class="number">1_000_000</span>) * rates[<span class="string">"input"</span>] +
+        (output_tokens / <span class="number">1_000_000</span>) * rates[<span class="string">"output"</span>]
+    )
+    
+    <span class="comment"># Log to LangSmith (attach to current run)</span>
+    run = get_current_run_tree()
+    <span class="keyword">if</span> run:
+        run.add_metadata({
+            <span class="string">"cost_usd"</span>: cost,
+            <span class="string">"input_tokens"</span>: input_tokens,
+            <span class="string">"output_tokens"</span>: output_tokens,
+            <span class="string">"model"</span>: model,
+        })</pre>
+            </div>
+        </section>
+
+        <!-- Evaluation Datasets -->
+        <section class="section">
+            <h2 class="section-title">Step 2: Evaluation Datasets</h2>
+            <p class="section-intro">
+                Build test datasets from production traces to evaluate and improve agent performance over time.
+            </p>
+
+            <div class="code-header">
+                <span>src/evaluation/datasets.py</span>
+                <span>python</span>
+            </div>
+            <div class="code-block">
+<pre><span class="string">"""
+HACI Evaluation Datasets
+
+Create and manage LangSmith datasets for agent evaluation.
+"""</span>
+
+<span class="keyword">from</span> langsmith <span class="keyword">import</span> Client
+<span class="keyword">from</span> langsmith.schemas <span class="keyword">import</span> Example
+<span class="keyword">from</span> typing <span class="keyword">import</span> List, Dict
+
+
+client = Client()
+
+
+<span class="keyword">def</span> <span class="function">create_haci_dataset</span>(name: <span class="type">str</span>, description: <span class="type">str</span>) -> <span class="type">str</span>:
+    <span class="string">"""Create a new evaluation dataset."""</span>
+    dataset = client.create_dataset(
+        dataset_name=name,
+        description=description,
+    )
+    <span class="keyword">return</span> dataset.id
+
+
+<span class="keyword">def</span> <span class="function">add_examples_from_traces</span>(
+    dataset_name: <span class="type">str</span>,
+    project_name: <span class="type">str</span>,
+    filter_tags: List[<span class="type">str</span>] = <span class="keyword">None</span>,
+    limit: <span class="type">int</span> = <span class="number">100</span>,
+):
+    <span class="string">"""
+    Create dataset examples from production traces.
+    
+    Filters for successful investigations and extracts
+    input/output pairs for evaluation.
+    """</span>
+    <span class="comment"># Query successful traces</span>
+    runs = client.list_runs(
+        project_name=project_name,
+        filter=<span class="string">"eq(status, 'success')"</span>,
+        limit=limit,
+    )
+    
+    examples = []
+    <span class="keyword">for</span> run <span class="keyword">in</span> runs:
+        <span class="comment"># Check for required tags</span>
+        <span class="keyword">if</span> filter_tags <span class="keyword">and not</span> <span class="type">all</span>(t <span class="keyword">in</span> (run.tags <span class="keyword">or</span> []) <span class="keyword">for</span> t <span class="keyword">in</span> filter_tags):
+            <span class="keyword">continue</span>
+        
+        <span class="comment"># Extract input/output</span>
+        example_input = {
+            <span class="string">"ticket_description"</span>: run.inputs.get(<span class="string">"ticket_description"</span>),
+            <span class="string">"ticket_severity"</span>: run.inputs.get(<span class="string">"ticket_severity"</span>),
+        }
+        
+        example_output = {
+            <span class="string">"root_cause"</span>: run.outputs.get(<span class="string">"finding"</span>, {}).get(<span class="string">"root_cause"</span>),
+            <span class="string">"confidence"</span>: run.outputs.get(<span class="string">"current_confidence"</span>),
+            <span class="string">"decision"</span>: run.outputs.get(<span class="string">"decision"</span>),
+        }
+        
+        examples.append({
+            <span class="string">"inputs"</span>: example_input,
+            <span class="string">"outputs"</span>: example_output,
+            <span class="string">"metadata"</span>: {
+                <span class="string">"source_run_id"</span>: <span class="type">str</span>(run.id),
+                <span class="string">"agent_id"</span>: run.metadata.get(<span class="string">"agent_id"</span>),
+            }
+        })
+    
+    <span class="comment"># Add to dataset</span>
+    client.create_examples(
+        inputs=[e[<span class="string">"inputs"</span>] <span class="keyword">for</span> e <span class="keyword">in</span> examples],
+        outputs=[e[<span class="string">"outputs"</span>] <span class="keyword">for</span> e <span class="keyword">in</span> examples],
+        metadata=[e[<span class="string">"metadata"</span>] <span class="keyword">for</span> e <span class="keyword">in</span> examples],
+        dataset_name=dataset_name,
+    )
+    
+    <span class="keyword">return</span> len(examples)
+
+
+<span class="comment"># ============================================================================</span>
+<span class="comment"># Custom Evaluators</span>
+<span class="comment"># ============================================================================</span>
+
+<span class="keyword">from</span> langsmith.evaluation <span class="keyword">import</span> evaluate, LangChainStringEvaluator
+
+
+<span class="keyword">def</span> <span class="function">confidence_accuracy_evaluator</span>(run, example) -> <span class="type">dict</span>:
+    <span class="string">"""
+    Evaluate if the agent's confidence matches actual accuracy.
+    
+    Compares claimed confidence vs whether the finding matches
+    the expected output (ground truth from human review).
+    """</span>
+    predicted_confidence = run.outputs.get(<span class="string">"current_confidence"</span>, <span class="number">0</span>)
+    predicted_root_cause = run.outputs.get(<span class="string">"finding"</span>, {}).get(<span class="string">"root_cause"</span>, <span class="string">""</span>)
+    expected_root_cause = example.outputs.get(<span class="string">"root_cause"</span>, <span class="string">""</span>)
+    
+    <span class="comment"># Simple similarity check (in production, use semantic similarity)</span>
+    is_correct = predicted_root_cause.lower() <span class="keyword">in</span> expected_root_cause.lower() <span class="keyword">or</span> \
+                 expected_root_cause.lower() <span class="keyword">in</span> predicted_root_cause.lower()
+    
+    <span class="comment"># Calibration: confidence should match accuracy</span>
+    calibration_error = <span class="type">abs</span>(predicted_confidence - (<span class="number">1.0</span> <span class="keyword">if</span> is_correct <span class="keyword">else</span> <span class="number">0.0</span>))
+    
+    <span class="keyword">return</span> {
+        <span class="string">"key"</span>: <span class="string">"confidence_calibration"</span>,
+        <span class="string">"score"</span>: <span class="number">1.0</span> - calibration_error,  <span class="comment"># Higher is better</span>
+        <span class="string">"comment"</span>: <span class="string">f"Predicted: {predicted_confidence:.2f}, Correct: {is_correct}"</span>,
+    }
+
+
+<span class="keyword">def</span> <span class="function">iteration_efficiency_evaluator</span>(run, example) -> <span class="type">dict</span>:
+    <span class="string">"""Evaluate if the agent solved efficiently (fewer iterations = better)."""</span>
+    iterations = run.outputs.get(<span class="string">"iteration_count"</span>, <span class="number">10</span>)
+    max_iterations = <span class="number">10</span>
+    
+    <span class="comment"># Normalize: 1 iteration = 1.0, 10 iterations = 0.0</span>
+    efficiency = <span class="number">1.0</span> - (iterations - <span class="number">1</span>) / (max_iterations - <span class="number">1</span>)
+    
+    <span class="keyword">return</span> {
+        <span class="string">"key"</span>: <span class="string">"iteration_efficiency"</span>,
+        <span class="string">"score"</span>: <span class="type">max</span>(<span class="number">0</span>, efficiency),
+        <span class="string">"comment"</span>: <span class="string">f"Solved in {iterations} iterations"</span>,
+    }
+
+
+<span class="keyword">async def</span> <span class="function">run_evaluation</span>(
+    dataset_name: <span class="type">str</span>,
+    agent_func,
+    experiment_prefix: <span class="type">str</span>,
+):
+    <span class="string">"""Run evaluation suite on a dataset."""</span>
+    results = evaluate(
+        agent_func,
+        data=dataset_name,
+        evaluators=[
+            confidence_accuracy_evaluator,
+            iteration_efficiency_evaluator,
+            LangChainStringEvaluator(<span class="string">"relevance"</span>),
+        ],
+        experiment_prefix=experiment_prefix,
+        metadata={
+            <span class="string">"version"</span>: <span class="string">"1.0.0"</span>,
+            <span class="string">"model"</span>: <span class="string">"claude-sonnet-4-20250514"</span>,
+        },
+    )
+    
+    <span class="keyword">return</span> results</pre>
+            </div>
+
+            <div class="callout info">
+                <div class="callout-title">💡 Continuous Evaluation</div>
+                <p>Run evaluations automatically in CI/CD pipelines to catch regressions. Compare experiments in the LangSmith UI to track improvements across model versions, prompt changes, and architectural updates.</p>
+            </div>
+        </section>
+
+        <!-- Monitoring -->
+        <section class="section">
+            <h2 class="section-title">Step 3: Production Monitoring</h2>
+            <p class="section-intro">
+                Set up dashboards and alerts to monitor HACI performance in production.
+            </p>
+
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card-header green">Key Metrics to Track</div>
+                    <div class="card-body">
+                        <ul>
+                            <li><strong>Resolution Rate:</strong> % investigations reaching COMPLETE</li>
+                            <li><strong>Avg Iterations:</strong> Mean iterations to resolution</li>
+                            <li><strong>Confidence Distribution:</strong> Histogram of final confidence</li>
+                            <li><strong>Cost per Investigation:</strong> Token costs by agent</li>
+                            <li><strong>Latency P95:</strong> Investigation time percentiles</li>
+                            <li><strong>Escalation Rate:</strong> % requiring human escalation</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header orange">Alerting Rules</div>
+                    <div class="card-body">
+                        <ul>
+                            <li><strong>Error Rate > 5%:</strong> Investigation failures spike</li>
+                            <li><strong>P95 Latency > 5min:</strong> Slow investigations</li>
+                            <li><strong>Cost > $1/investigation:</strong> Token usage spike</li>
+                            <li><strong>Confidence < 0.6 avg:</strong> Quality degradation</li>
+                            <li><strong>Escalation > 30%:</strong> Too many human handoffs</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="code-header">
+                <span>src/monitoring/alerts.py</span>
+                <span>python</span>
+            </div>
+            <div class="code-block">
+<pre><span class="string">"""
+HACI Monitoring Alerts
+
+Query LangSmith for metrics and trigger alerts.
+"""</span>
+
+<span class="keyword">from</span> langsmith <span class="keyword">import</span> Client
+<span class="keyword">from</span> datetime <span class="keyword">import</span> datetime, timedelta
+
+
+client = Client()
+
+
+<span class="keyword">def</span> <span class="function">check_error_rate</span>(
+    project_name: <span class="type">str</span>,
+    window_hours: <span class="type">int</span> = <span class="number">1</span>,
+    threshold: <span class="type">float</span> = <span class="number">0.05</span>,
+) -> <span class="type">dict</span>:
+    <span class="string">"""Check if error rate exceeds threshold."""</span>
+    since = datetime.utcnow() - timedelta(hours=window_hours)
+    
+    <span class="comment"># Get all runs</span>
+    all_runs = <span class="type">list</span>(client.list_runs(
+        project_name=project_name,
+        start_time=since,
+        limit=<span class="number">1000</span>,
+    ))
+    
+    <span class="keyword">if not</span> all_runs:
+        <span class="keyword">return</span> {<span class="string">"status"</span>: <span class="string">"ok"</span>, <span class="string">"message"</span>: <span class="string">"No runs in window"</span>}
+    
+    <span class="comment"># Calculate error rate</span>
+    errors = <span class="type">sum</span>(<span class="number">1</span> <span class="keyword">for</span> r <span class="keyword">in</span> all_runs <span class="keyword">if</span> r.error)
+    error_rate = errors / len(all_runs)
+    
+    <span class="keyword">if</span> error_rate > threshold:
+        <span class="keyword">return</span> {
+            <span class="string">"status"</span>: <span class="string">"alert"</span>,
+            <span class="string">"metric"</span>: <span class="string">"error_rate"</span>,
+            <span class="string">"value"</span>: error_rate,
+            <span class="string">"threshold"</span>: threshold,
+            <span class="string">"message"</span>: <span class="string">f"Error rate {error_rate:.1%} exceeds {threshold:.1%}"</span>,
+        }
+    
+    <span class="keyword">return</span> {<span class="string">"status"</span>: <span class="string">"ok"</span>, <span class="string">"error_rate"</span>: error_rate}
+
+
+<span class="keyword">def</span> <span class="function">check_avg_confidence</span>(
+    project_name: <span class="type">str</span>,
+    window_hours: <span class="type">int</span> = <span class="number">24</span>,
+    threshold: <span class="type">float</span> = <span class="number">0.6</span>,
+) -> <span class="type">dict</span>:
+    <span class="string">"""Check if average confidence is below threshold."""</span>
+    since = datetime.utcnow() - timedelta(hours=window_hours)
+    
+    runs = <span class="type">list</span>(client.list_runs(
+        project_name=project_name,
+        start_time=since,
+        filter=<span class="string">"eq(status, 'success')"</span>,
+        limit=<span class="number">1000</span>,
+    ))
+    
+    confidences = [
+        r.outputs.get(<span class="string">"current_confidence"</span>, <span class="number">0</span>)
+        <span class="keyword">for</span> r <span class="keyword">in</span> runs
+        <span class="keyword">if</span> r.outputs <span class="keyword">and</span> <span class="string">"current_confidence"</span> <span class="keyword">in</span> r.outputs
+    ]
+    
+    <span class="keyword">if not</span> confidences:
+        <span class="keyword">return</span> {<span class="string">"status"</span>: <span class="string">"ok"</span>, <span class="string">"message"</span>: <span class="string">"No confidence data"</span>}
+    
+    avg_confidence = <span class="type">sum</span>(confidences) / len(confidences)
+    
+    <span class="keyword">if</span> avg_confidence < threshold:
+        <span class="keyword">return</span> {
+            <span class="string">"status"</span>: <span class="string">"alert"</span>,
+            <span class="string">"metric"</span>: <span class="string">"avg_confidence"</span>,
+            <span class="string">"value"</span>: avg_confidence,
+            <span class="string">"threshold"</span>: threshold,
+            <span class="string">"message"</span>: <span class="string">f"Avg confidence {avg_confidence:.2f} below {threshold}"</span>,
+        }
+    
+    <span class="keyword">return</span> {<span class="string">"status"</span>: <span class="string">"ok"</span>, <span class="string">"avg_confidence"</span>: avg_confidence}</pre>
+            </div>
+        </section>
+
+        <!-- Deployment -->
+        <section class="section">
+            <h2 class="section-title">Step 4: Deploy to LangGraph Platform</h2>
+            <p class="section-intro">
+                Deploy HACI to LangGraph Platform for production-ready hosting with built-in scaling and persistence.
+            </p>
+
+            <div class="code-header">
+                <span>langgraph.json</span>
+                <span>configuration</span>
+            </div>
+            <div class="code-block">
+<pre>{
+  <span class="string">"$schema"</span>: <span class="string">"https://langchain-ai.github.io/langgraph/langgraph.schema.json"</span>,
+  <span class="string">"dependencies"</span>: [<span class="string">"."</span>],
+  <span class="string">"graphs"</span>: {
+    <span class="string">"harness"</span>: <span class="string">"./src/graphs/harness_graph.py:compile_harness_graph"</span>,
+    <span class="string">"swarm"</span>: <span class="string">"./src/graphs/swarm_graph.py:build_swarm_graph"</span>
+  },
+  <span class="string">"env"</span>: <span class="string">".env"</span>
+}</pre>
+            </div>
+
+            <div class="code-header">
+                <span>Terminal</span>
+                <span>deployment</span>
+            </div>
+            <div class="code-block">
+<pre><span class="comment"># Install LangGraph CLI</span>
+pip install langgraph-cli
+
+<span class="comment"># Test locally with LangGraph Studio</span>
+langgraph dev
+
+<span class="comment"># Deploy to LangGraph Platform</span>
+langgraph deploy --project haci-production
+
+<span class="comment"># Or deploy via LangSmith UI</span>
+<span class="comment"># 1. Go to smith.langchain.com</span>
+<span class="comment"># 2. Navigate to Deployments</span>
+<span class="comment"># 3. Click "New Deployment"</span>
+<span class="comment"># 4. Connect your repository</span>
+<span class="comment"># 5. Configure environment variables</span>
+<span class="comment"># 6. Deploy</span></pre>
+            </div>
+
+            <div class="callout success">
+                <div class="callout-title">✅ Production Features</div>
+                <p>LangGraph Platform provides: automatic scaling, PostgreSQL persistence, built-in authentication, streaming endpoints, and seamless LangSmith integration. All traces automatically flow to your LangSmith project.</p>
+            </div>
+        </section>
+
+        <!-- Deployment Checklist -->
+        <section class="section">
+            <h2 class="section-title">Production Checklist</h2>
+            <p class="section-intro">
+                Verify these items before going live with HACI on LangSmith.
+            </p>
+
+            <div class="table-container">
+                <table class="info-table">
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th>Item</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Security</strong></td>
+                            <td>API keys in environment variables (not code)</td>
+                            <td>☐</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Security</strong></td>
+                            <td>LangSmith project access restricted to team</td>
+                            <td>☐</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Observability</strong></td>
+                            <td>All agents decorated with @traceable</td>
+                            <td>☐</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Observability</strong></td>
+                            <td>Custom metadata (ticket_id, agent_id) on all traces</td>
+                            <td>☐</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Evaluation</strong></td>
+                            <td>Baseline dataset created with 50+ examples</td>
+                            <td>☐</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Evaluation</strong></td>
+                            <td>Custom evaluators for confidence calibration</td>
+                            <td>☐</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Monitoring</strong></td>
+                            <td>Error rate alerts configured</td>
+                            <td>☐</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Monitoring</strong></td>
+                            <td>Cost tracking enabled</td>
+                            <td>☐</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Infrastructure</strong></td>
+                            <td>PostgreSQL checkpointer for production</td>
+                            <td>☐</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Infrastructure</strong></td>
+                            <td>Rate limits configured for LLM APIs</td>
+                            <td>☐</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Testing</strong></td>
+                            <td>Integration tests passing</td>
+                            <td>☐</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Testing</strong></td>
+                            <td>Human-in-the-loop flow tested</td>
+                            <td>☐</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Summary -->
+        <section class="section">
+            <h2 class="section-title">Implementation Complete! 🎉</h2>
+            <p class="section-intro">
+                You've built a production-ready HACI system on LangSmith with full observability.
+            </p>
+
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card-header green">What You Built</div>
+                    <div class="card-body">
+                        <ul>
+                            <li>Stateful harness graph (THINK→ACT→OBSERVE→EVALUATE)</li>
+                            <li>Multiple specialized agents with domain expertise</li>
+                            <li>Multi-agent swarm with coordinator synthesis</li>
+                            <li>Human-in-the-loop approval gates</li>
+                            <li>Full LangSmith tracing integration</li>
+                            <li>Evaluation datasets and custom evaluators</li>
+                            <li>Production monitoring and alerts</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header purple">Next Steps</div>
+                    <div class="card-body">
+                        <ul>
+                            <li>Add more specialized agents (network, security, etc.)</li>
+                            <li>Implement MCP tool servers for vendors</li>
+                            <li>Build feedback loop from production traces</li>
+                            <li>Fine-tune prompts based on evaluation results</li>
+                            <li>Expand evaluation dataset over time</li>
+                            <li>Implement A/B testing for prompt changes</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Navigation -->
+        <div class="nav-footer">
+            <a href="haci_langsmith_3_agents.html" class="nav-btn">
+                ← Previous: Agent Implementation
+            </a>
+            <a href="haci_langsmith_1_setup.html" class="nav-btn">
+                Back to Start →
+            </a>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-stats">
+            <div class="footer-stat">
+                <div class="footer-stat-value">4</div>
+                <div class="footer-stat-label">Pages Complete</div>
+            </div>
+            <div class="footer-stat">
+                <div class="footer-stat-value">Production</div>
+                <div class="footer-stat-label">Ready</div>
+            </div>
+            <div class="footer-stat">
+                <div class="footer-stat-value">Full</div>
+                <div class="footer-stat-label">Observability</div>
+            </div>
+        </div>
+        <p>HACI Implementation Guide • LangSmith Edition</p>
+        <p style="opacity: 0.7; margin-top: 0.5rem;">Page 4 of 4 • Observability & Deployment</p>
+    </footer>
+</body>
+</html>

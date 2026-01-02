@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HACI on LangSmith - Context Engineering Integration</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --secondary: #7c3aed;
+            --success: #059669;
+            --warning: #d97706;
+            --info: #0891b2;
+            --langchain-green: #10b981;
+            --context-teal: #14b8a6;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: var(--gray-800); background: var(--gray-50); }
+
+        .nav { position: sticky; top: 0; background: white; border-bottom: 1px solid var(--gray-200); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; z-index: 100; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .nav-brand { font-weight: 700; font-size: 1.25rem; color: var(--gray-900); }
+        .nav-brand span { color: var(--context-teal); }
+        .nav-links { display: flex; gap: 0.5rem; align-items: center; }
+        .nav-links a { color: var(--gray-600); text-decoration: none; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.875rem; transition: all 0.2s; }
+        .nav-links a:hover { background: var(--gray-100); color: var(--gray-900); }
+        .nav-links a.active { background: linear-gradient(135deg, var(--context-teal), var(--primary)); color: white; }
+        .page-indicator { background: var(--gray-100); padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; color: var(--gray-600); }
+
+        .hero { background: linear-gradient(135deg, var(--context-teal), var(--primary), var(--langchain-green)); color: white; padding: 4rem 2rem; text-align: center; }
+        .hero h1 { font-size: 2.5rem; margin-bottom: 1rem; font-weight: 800; }
+        .hero p { font-size: 1.25rem; opacity: 0.95; max-width: 700px; margin: 0 auto; }
+
+        .stats-bar { background: white; border-bottom: 1px solid var(--gray-200); padding: 1.5rem 2rem; display: flex; justify-content: center; gap: 4rem; flex-wrap: wrap; }
+        .stat { text-align: center; }
+        .stat-value { font-size: 1.75rem; font-weight: 700; color: var(--context-teal); }
+        .stat-label { font-size: 0.875rem; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.05em; }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 3rem 2rem; }
+        .section { margin-bottom: 4rem; }
+        .section-title { font-size: 1.75rem; font-weight: 700; color: var(--gray-900); margin-bottom: 1.5rem; padding-bottom: 0.75rem; border-bottom: 3px solid var(--gray-200); position: relative; text-align: center; }
+        .section-title::after { content: ''; position: absolute; bottom: -3px; left: 50%; transform: translateX(-50%); width: 60px; height: 3px; background: linear-gradient(90deg, var(--context-teal), var(--primary)); }
+
+        .layer-stack { display: flex; flex-direction: column; gap: 0; margin: 2rem 0; }
+        .layer { padding: 1.5rem 2rem; border-left: 4px solid; display: flex; align-items: center; gap: 1.5rem; background: white; }
+        .layer:first-child { border-radius: 12px 12px 0 0; }
+        .layer:last-child { border-radius: 0 0 12px 12px; }
+        .layer.system { border-left-color: #3b82f6; background: linear-gradient(90deg, rgba(59,130,246,0.1), white); }
+        .layer.kernel { border-left-color: #8b5cf6; background: linear-gradient(90deg, rgba(139,92,246,0.1), white); }
+        .layer.shared { border-left-color: #22c55e; background: linear-gradient(90deg, rgba(34,197,94,0.1), white); }
+        .layer.working { border-left-color: #f59e0b; background: linear-gradient(90deg, rgba(245,158,11,0.1), white); }
+        .layer.output { border-left-color: #ef4444; background: linear-gradient(90deg, rgba(239,68,68,0.1), white); }
+
+        .layer-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: white; flex-shrink: 0; }
+        .layer.system .layer-icon { background: #3b82f6; }
+        .layer.kernel .layer-icon { background: #8b5cf6; }
+        .layer.shared .layer-icon { background: #22c55e; }
+        .layer.working .layer-icon { background: #f59e0b; }
+        .layer.output .layer-icon { background: #ef4444; }
+
+        .layer-content h3 { font-size: 1.25rem; margin-bottom: 0.25rem; }
+        .layer-content p { color: var(--gray-600); font-size: 0.9375rem; }
+        .layer-badge { background: var(--gray-100); padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; color: var(--gray-600); margin-left: auto; }
+
+        .code-block { background: #1e1e1e; border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+        .code-header { background: #2d2d2d; padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #404040; }
+        .code-filename { color: #9ca3af; font-size: 0.875rem; font-family: 'Fira Code', monospace; }
+        .code-lang { color: #10b981; font-size: 0.75rem; padding: 0.25rem 0.5rem; background: rgba(16,185,129,0.1); border-radius: 4px; }
+        .code-content { padding: 1.5rem; overflow-x: auto; }
+        pre { margin: 0; font-family: 'Fira Code', monospace; font-size: 0.875rem; line-height: 1.6; color: #e5e7eb; }
+        .keyword { color: #c586c0; }
+        .string { color: #ce9178; }
+        .function { color: #dcdcaa; }
+        .class { color: #4ec9b0; }
+        .comment { color: #6a9955; }
+        .decorator { color: #d7ba7d; }
+        .number { color: #b5cea8; }
+
+        .callout { padding: 1.25rem 1.5rem; border-radius: 12px; margin: 1.5rem 0; display: flex; gap: 1rem; }
+        .callout-icon { font-size: 1.5rem; flex-shrink: 0; }
+        .callout.info { background: linear-gradient(135deg, rgba(8,145,178,0.1), rgba(6,182,212,0.05)); border-left: 4px solid var(--info); }
+        .callout.success { background: linear-gradient(135deg, rgba(5,150,105,0.1), rgba(16,185,129,0.05)); border-left: 4px solid var(--success); }
+        .callout.warning { background: linear-gradient(135deg, rgba(217,119,6,0.1), rgba(245,158,11,0.05)); border-left: 4px solid var(--warning); }
+        .callout.tip { background: linear-gradient(135deg, rgba(20,184,166,0.1), rgba(13,148,136,0.05)); border-left: 4px solid var(--context-teal); }
+        .callout h4 { font-weight: 600; margin-bottom: 0.5rem; color: var(--gray-800); }
+        .callout p { color: var(--gray-700); font-size: 0.9375rem; }
+
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin: 2rem 0; }
+        .feature-card { background: white; border-radius: 12px; padding: 1.5rem; border: 1px solid var(--gray-200); }
+        .feature-card h4 { color: var(--context-teal); font-size: 1.125rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+        .feature-card p { color: var(--gray-600); font-size: 0.9375rem; }
+
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin: 1.5rem 0; }
+        th, td { padding: 1rem 1.25rem; text-align: left; border-bottom: 1px solid var(--gray-200); }
+        th { background: var(--gray-100); font-weight: 600; color: var(--gray-700); font-size: 0.875rem; text-transform: uppercase; }
+        td { color: var(--gray-700); font-size: 0.9375rem; }
+        tr:last-child td { border-bottom: none; }
+
+        .mapping-diagram { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 2rem; margin: 2rem 0; }
+        .mapping-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px dashed var(--gray-200); }
+        .mapping-row:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+        .mapping-from { flex: 1; background: var(--gray-50); padding: 1rem; border-radius: 8px; text-align: center; font-weight: 600; color: var(--gray-700); }
+        .mapping-arrow { font-size: 1.5rem; color: var(--context-teal); }
+        .mapping-to { flex: 1; background: linear-gradient(135deg, rgba(20,184,166,0.1), rgba(20,184,166,0.05)); padding: 1rem; border-radius: 8px; text-align: center; font-weight: 600; color: var(--context-teal); }
+
+        .nav-footer { display: flex; justify-content: space-between; padding: 2rem 0; margin-top: 2rem; border-top: 1px solid var(--gray-200); }
+        .nav-btn { display: flex; align-items: center; gap: 0.75rem; padding: 1rem 1.5rem; background: white; border: 1px solid var(--gray-200); border-radius: 12px; text-decoration: none; color: var(--gray-700); transition: all 0.2s; }
+        .nav-btn:hover { border-color: var(--primary); color: var(--primary); box-shadow: 0 4px 12px rgba(37,99,235,0.15); }
+        .nav-btn-label { font-size: 0.75rem; color: var(--gray-500); text-transform: uppercase; }
+        .nav-btn-title { font-weight: 600; }
+
+        footer { background: var(--gray-900); color: var(--gray-400); padding: 2rem; text-align: center; font-size: 0.875rem; }
+        footer strong { color: white; }
+
+        @media (max-width: 768px) { .hero h1 { font-size: 2rem; } .stats-bar { gap: 2rem; } .nav-links { display: none; } .layer { flex-direction: column; text-align: center; } .layer-badge { margin: 0.5rem 0 0 0; } }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-brand">HACI <span>LangSmith</span></div>
+        <div class="nav-links">
+            <a href="haci_langsmith_1_setup.html">Setup</a>
+            <a href="haci_langsmith_2_graph.html">Graph</a>
+            <a href="haci_langsmith_3_agents.html">Agents</a>
+            <a href="haci_langsmith_4_observability.html">Observability</a>
+            <a href="haci_langsmith_5_harness_phases.html">Phases</a>
+            <a href="haci_langsmith_6_swarm.html">Swarm</a>
+            <a href="haci_langsmith_7_context.html" class="active">Context</a>
+            <a href="haci_langsmith_8_hitl.html">HITL</a>
+            <a href="haci_langsmith_9_testing.html">Testing</a>
+            <a href="haci_langsmith_10_deployment.html">Deploy</a>
+            <span class="page-indicator">7 of 10</span>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <h1>🧩 Context Engineering Integration</h1>
+        <p>Implement HACI's 5-layer context architecture in LangGraph with dynamic memory management, shared context buses, and optimized token allocation</p>
+    </section>
+
+    <div class="stats-bar">
+        <div class="stat">
+            <div class="stat-value">5</div>
+            <div class="stat-label">Context Layers</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">128K</div>
+            <div class="stat-label">Token Budget</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">4</div>
+            <div class="stat-label">Memory Types</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">∞</div>
+            <div class="stat-label">Scalable Context</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <section class="section">
+            <h2 class="section-title">5-Layer Context Architecture</h2>
+            
+            <div class="layer-stack">
+                <div class="layer system">
+                    <div class="layer-icon">⚙️</div>
+                    <div class="layer-content">
+                        <h3>Layer 1: System Context</h3>
+                        <p>Static instructions, identity, capabilities, governance rules. Loaded once per agent initialization.</p>
+                    </div>
+                    <div class="layer-badge">~2,000 tokens</div>
+                </div>
+                <div class="layer kernel">
+                    <div class="layer-icon">🧠</div>
+                    <div class="layer-content">
+                        <h3>Layer 2: Kernel Memory</h3>
+                        <p>Persistent, cross-session knowledge. Customer profiles, system baselines, historical patterns.</p>
+                    </div>
+                    <div class="layer-badge">~5,000 tokens</div>
+                </div>
+                <div class="layer shared">
+                    <div class="layer-icon">🔄</div>
+                    <div class="layer-content">
+                        <h3>Layer 3: Shared Context Bus</h3>
+                        <p>Multi-agent communication channel. Findings, conflicts, and cross-domain signals.</p>
+                    </div>
+                    <div class="layer-badge">~3,000 tokens</div>
+                </div>
+                <div class="layer working">
+                    <div class="layer-icon">📝</div>
+                    <div class="layer-content">
+                        <h3>Layer 4: Working Context</h3>
+                        <p>Current investigation state. Hypotheses, observations, tool results, iteration history.</p>
+                    </div>
+                    <div class="layer-badge">~15,000 tokens</div>
+                </div>
+                <div class="layer output">
+                    <div class="layer-icon">📤</div>
+                    <div class="layer-content">
+                        <h3>Layer 5: Output Buffer</h3>
+                        <p>Generated content staging. Findings, recommendations, status updates before delivery.</p>
+                    </div>
+                    <div class="layer-badge">~3,000 tokens</div>
+                </div>
+            </div>
+
+            <div class="callout info">
+                <div class="callout-icon">💡</div>
+                <div>
+                    <h4>Token Budget Management</h4>
+                    <p>Total budget: ~28,000 tokens, leaving 100,000 tokens for LLM reasoning and tool outputs. Budget allocations are dynamic based on investigation complexity.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2 class="section-title">LangGraph State Mapping</h2>
+            
+            <div class="mapping-diagram">
+                <div class="mapping-row">
+                    <div class="mapping-from">System Context</div>
+                    <div class="mapping-arrow">→</div>
+                    <div class="mapping-to">Agent system_prompt property</div>
+                </div>
+                <div class="mapping-row">
+                    <div class="mapping-from">Kernel Memory</div>
+                    <div class="mapping-arrow">→</div>
+                    <div class="mapping-to">External store (Redis/PostgreSQL)</div>
+                </div>
+                <div class="mapping-row">
+                    <div class="mapping-from">Shared Context Bus</div>
+                    <div class="mapping-arrow">→</div>
+                    <div class="mapping-to">SwarmState.agent_findings</div>
+                </div>
+                <div class="mapping-row">
+                    <div class="mapping-from">Working Context</div>
+                    <div class="mapping-arrow">→</div>
+                    <div class="mapping-to">HarnessState (TypedDict)</div>
+                </div>
+                <div class="mapping-row">
+                    <div class="mapping-from">Output Buffer</div>
+                    <div class="mapping-arrow">→</div>
+                    <div class="mapping-to">HarnessState.finding + messages</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2 class="section-title">Memory System Implementation</h2>
+            
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-filename">src/memory/context_manager.py</span>
+                    <span class="code-lang">Python</span>
+                </div>
+                <div class="code-content">
+<pre><span class="keyword">from</span> typing <span class="keyword">import</span> Dict, List, Optional
+<span class="keyword">from</span> langsmith <span class="keyword">import</span> traceable
+<span class="keyword">import</span> redis
+<span class="keyword">import</span> json
+
+<span class="keyword">class</span> <span class="class">ContextLayer</span>:
+    <span class="string">"""Represents a single layer in the context architecture."""</span>
+    SYSTEM = <span class="string">"system"</span>
+    KERNEL = <span class="string">"kernel"</span>
+    SHARED = <span class="string">"shared"</span>
+    WORKING = <span class="string">"working"</span>
+    OUTPUT = <span class="string">"output"</span>
+
+<span class="keyword">class</span> <span class="class">TokenBudget</span>(BaseModel):
+    <span class="string">"""Dynamic token budget allocation."""</span>
+    total: <span class="class">int</span> = <span class="number">128000</span>
+    reserved_for_output: <span class="class">int</span> = <span class="number">8000</span>
+    
+    system: <span class="class">int</span> = <span class="number">2000</span>
+    kernel: <span class="class">int</span> = <span class="number">5000</span>
+    shared: <span class="class">int</span> = <span class="number">3000</span>
+    working: <span class="class">int</span> = <span class="number">15000</span>
+    output: <span class="class">int</span> = <span class="number">3000</span>
+    
+    <span class="keyword">def</span> <span class="function">remaining_for_reasoning</span>(self) -> <span class="class">int</span>:
+        <span class="string">"""Calculate tokens available for LLM reasoning."""</span>
+        used = self.system + self.kernel + self.shared + self.working + self.output
+        <span class="keyword">return</span> self.total - used - self.reserved_for_output
+
+<span class="keyword">class</span> <span class="class">ContextManager</span>:
+    <span class="string">"""Manages the 5-layer context architecture."""</span>
+    
+    <span class="keyword">def</span> <span class="function">__init__</span>(self, redis_url: <span class="class">str</span>, budget: <span class="class">TokenBudget</span> = <span class="keyword">None</span>):
+        self.redis = redis.from_url(redis_url)
+        self.budget = budget <span class="keyword">or</span> <span class="class">TokenBudget</span>()
+        self._token_counter = <span class="class">TokenCounter</span>()
+    
+    <span class="decorator">@traceable</span>(name=<span class="string">"load_kernel_memory"</span>)
+    <span class="keyword">async def</span> <span class="function">load_kernel_memory</span>(
+        self,
+        customer_id: <span class="class">str</span>,
+        system_ids: List[<span class="class">str</span>]
+    ) -> <span class="class">dict</span>:
+        <span class="string">"""Load persistent kernel memory for the investigation."""</span>
+        
+        kernel_data = {
+            <span class="string">"customer_profile"</span>: <span class="keyword">None</span>,
+            <span class="string">"system_baselines"</span>: {},
+            <span class="string">"historical_patterns"</span>: [],
+            <span class="string">"known_issues"</span>: []
+        }
+        
+        <span class="comment"># Load customer profile</span>
+        profile_key = <span class="string">f"kernel:customer:</span>{customer_id}<span class="string">"</span>
+        profile_data = self.redis.get(profile_key)
+        <span class="keyword">if</span> profile_data:
+            kernel_data[<span class="string">"customer_profile"</span>] = json.loads(profile_data)
+        
+        <span class="comment"># Load system baselines</span>
+        <span class="keyword">for</span> system_id <span class="keyword">in</span> system_ids:
+            baseline_key = <span class="string">f"kernel:baseline:</span>{system_id}<span class="string">"</span>
+            baseline = self.redis.get(baseline_key)
+            <span class="keyword">if</span> baseline:
+                kernel_data[<span class="string">"system_baselines"</span>][system_id] = json.loads(baseline)
+        
+        <span class="comment"># Load relevant historical patterns (limited by token budget)</span>
+        patterns = self.redis.lrange(<span class="string">f"kernel:patterns:</span>{customer_id}<span class="string">"</span>, <span class="number">0</span>, <span class="number">10</span>)
+        kernel_data[<span class="string">"historical_patterns"</span>] = [
+            json.loads(p) <span class="keyword">for</span> p <span class="keyword">in</span> patterns
+        ]
+        
+        <span class="comment"># Trim to budget</span>
+        <span class="keyword">return</span> self.<span class="function">_trim_to_budget</span>(kernel_data, self.budget.kernel)
+    
+    <span class="decorator">@traceable</span>(name=<span class="string">"build_shared_context"</span>)
+    <span class="keyword">def</span> <span class="function">build_shared_context</span>(
+        self,
+        agent_findings: List[<span class="class">AgentFinding</span>],
+        conflicts: List[<span class="class">dict</span>]
+    ) -> <span class="class">str</span>:
+        <span class="string">"""Build shared context bus content from swarm findings."""</span>
+        
+        shared_content = []
+        
+        <span class="comment"># Summarize each agent's findings</span>
+        shared_content.append(<span class="string">"## Cross-Agent Findings\n"</span>)
+        <span class="keyword">for</span> finding <span class="keyword">in</span> agent_findings:
+            shared_content.append(
+                <span class="string">f"### </span>{finding.domain}<span class="string"> Agent (confidence: </span>{finding.confidence:.0%}<span class="string">)\n"</span>
+                <span class="string">f"</span>{finding.root_cause_hypothesis}<span class="string">\n"</span>
+            )
+        
+        <span class="comment"># Note conflicts</span>
+        <span class="keyword">if</span> conflicts:
+            shared_content.append(<span class="string">"\n## Detected Conflicts\n"</span>)
+            <span class="keyword">for</span> conflict <span class="keyword">in</span> conflicts:
+                shared_content.append(
+                    <span class="string">f"- </span>{conflict[<span class="string">'agents'</span>]}<span class="string">: </span>{conflict[<span class="string">'summary'</span>]}<span class="string">\n"</span>
+                )
+        
+        full_context = <span class="string">""</span>.join(shared_content)
+        <span class="keyword">return</span> self.<span class="function">_trim_to_budget</span>(full_context, self.budget.shared)
+    
+    <span class="decorator">@traceable</span>(name=<span class="string">"build_working_context"</span>)
+    <span class="keyword">def</span> <span class="function">build_working_context</span>(self, state: <span class="class">HarnessState</span>) -> <span class="class">str</span>:
+        <span class="string">"""Build working context from current investigation state."""</span>
+        
+        sections = []
+        
+        <span class="comment"># Current hypotheses</span>
+        sections.append(<span class="string">"## Active Hypotheses\n"</span>)
+        <span class="keyword">for</span> h <span class="keyword">in</span> state.get(<span class="string">"hypotheses"</span>, []):
+            sections.append(<span class="string">f"- [{h.confidence:.0%}] </span>{h.description}<span class="string">\n"</span>)
+        
+        <span class="comment"># Recent observations (most relevant first)</span>
+        sections.append(<span class="string">"\n## Key Observations\n"</span>)
+        observations = state.get(<span class="string">"observations"</span>, [])[-<span class="number">10</span>:]  <span class="comment"># Last 10</span>
+        <span class="keyword">for</span> obs <span class="keyword">in</span> observations:
+            sections.append(<span class="string">f"- [</span>{obs.source_tool}<span class="string">] </span>{obs.finding}<span class="string">\n"</span>)
+        
+        <span class="comment"># Current investigation plan</span>
+        <span class="keyword">if</span> state.get(<span class="string">"investigation_plan"</span>):
+            sections.append(<span class="string">"\n## Investigation Plan\n"</span>)
+            <span class="keyword">for</span> i, step <span class="keyword">in</span> <span class="function">enumerate</span>(state[<span class="string">"investigation_plan"</span>], <span class="number">1</span>):
+                sections.append(<span class="string">f"</span>{i}<span class="string">. </span>{step}<span class="string">\n"</span>)
+        
+        <span class="comment"># Iteration metadata</span>
+        sections.append(<span class="string">f"\n## Status\n"</span>)
+        sections.append(<span class="string">f"Iteration: </span>{state.get(<span class="string">'iteration_count'</span>, <span class="number">1</span>)}<span class="string">/</span>{state.get(<span class="string">'max_iterations'</span>, <span class="number">5</span>)}<span class="string">\n"</span>)
+        sections.append(<span class="string">f"Current confidence: </span>{state.get(<span class="string">'current_confidence'</span>, <span class="number">0</span>):.0%}<span class="string">\n"</span>)
+        
+        full_context = <span class="string">""</span>.join(sections)
+        <span class="keyword">return</span> self.<span class="function">_trim_to_budget</span>(full_context, self.budget.working)
+    
+    <span class="keyword">def</span> <span class="function">_trim_to_budget</span>(self, content: <span class="class">any</span>, max_tokens: <span class="class">int</span>) -> <span class="class">any</span>:
+        <span class="string">"""Trim content to fit within token budget."""</span>
+        <span class="keyword">if</span> isinstance(content, <span class="class">str</span>):
+            tokens = self._token_counter.count(content)
+            <span class="keyword">if</span> tokens <= max_tokens:
+                <span class="keyword">return</span> content
+            <span class="comment"># Truncate with ellipsis</span>
+            ratio = max_tokens / tokens
+            char_limit = <span class="function">int</span>(<span class="function">len</span>(content) * ratio * <span class="number">0.9</span>)
+            <span class="keyword">return</span> content[:char_limit] + <span class="string">"\n...[truncated]"</span>
+        <span class="keyword">return</span> content</pre>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2 class="section-title">Memory Types</h2>
+            
+            <div class="cards-grid">
+                <div class="feature-card">
+                    <h4>📚 Episodic Memory</h4>
+                    <p>Recent investigation history. Stored in Redis with TTL. Retrieved to avoid repeating failed approaches.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>🧬 Semantic Memory</h4>
+                    <p>Customer profiles, system architectures, SLA requirements. Persisted in PostgreSQL. Updated infrequently.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>⚙️ Procedural Memory</h4>
+                    <p>Tool usage patterns, successful investigation paths. Embedded in agent prompts. Learned from evaluations.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>💭 Working Memory</h4>
+                    <p>Current harness state. Lives in LangGraph state. Checkpointed for resumption.</p>
+                </div>
+            </div>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-filename">src/memory/episodic_store.py</span>
+                    <span class="code-lang">Python</span>
+                </div>
+                <div class="code-content">
+<pre><span class="keyword">class</span> <span class="class">EpisodicMemoryStore</span>:
+    <span class="string">"""Stores recent investigation episodes for learning."""</span>
+    
+    <span class="keyword">def</span> <span class="function">__init__</span>(self, redis_url: <span class="class">str</span>, ttl_hours: <span class="class">int</span> = <span class="number">72</span>):
+        self.redis = redis.from_url(redis_url)
+        self.ttl = ttl_hours * <span class="number">3600</span>
+    
+    <span class="decorator">@traceable</span>(name=<span class="string">"store_episode"</span>)
+    <span class="keyword">async def</span> <span class="function">store_episode</span>(
+        self,
+        ticket_id: <span class="class">str</span>,
+        customer_id: <span class="class">str</span>,
+        episode: <span class="class">dict</span>
+    ):
+        <span class="string">"""Store a completed investigation episode."""</span>
+        key = <span class="string">f"episode:</span>{customer_id}<span class="string">:</span>{ticket_id}<span class="string">"</span>
+        
+        episode_data = {
+            <span class="string">"ticket_id"</span>: ticket_id,
+            <span class="string">"symptoms"</span>: episode[<span class="string">"symptoms"</span>],
+            <span class="string">"root_cause"</span>: episode[<span class="string">"root_cause"</span>],
+            <span class="string">"successful_tools"</span>: episode[<span class="string">"successful_tools"</span>],
+            <span class="string">"failed_approaches"</span>: episode[<span class="string">"failed_approaches"</span>],
+            <span class="string">"resolution_time_ms"</span>: episode[<span class="string">"resolution_time_ms"</span>],
+            <span class="string">"timestamp"</span>: datetime.utcnow().isoformat()
+        }
+        
+        self.redis.setex(key, self.ttl, json.dumps(episode_data))
+        
+        <span class="comment"># Also index by symptom signature for quick lookup</span>
+        symptom_hash = <span class="function">hash_symptoms</span>(episode[<span class="string">"symptoms"</span>])
+        self.redis.sadd(<span class="string">f"symptom_index:</span>{symptom_hash}<span class="string">"</span>, key)
+    
+    <span class="decorator">@traceable</span>(name=<span class="string">"find_similar_episodes"</span>)
+    <span class="keyword">async def</span> <span class="function">find_similar_episodes</span>(
+        self,
+        symptoms: List[<span class="class">str</span>],
+        limit: <span class="class">int</span> = <span class="number">3</span>
+    ) -> List[<span class="class">dict</span>]:
+        <span class="string">"""Find past episodes with similar symptoms."""</span>
+        symptom_hash = <span class="function">hash_symptoms</span>(symptoms)
+        episode_keys = self.redis.smembers(<span class="string">f"symptom_index:</span>{symptom_hash}<span class="string">"</span>)
+        
+        episodes = []
+        <span class="keyword">for</span> key <span class="keyword">in</span> <span class="function">list</span>(episode_keys)[:limit]:
+            data = self.redis.get(key)
+            <span class="keyword">if</span> data:
+                episodes.append(json.loads(data))
+        
+        <span class="keyword">return</span> episodes</pre>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2 class="section-title">Context Injection into Prompts</h2>
+            
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-filename">src/prompts/context_injector.py</span>
+                    <span class="code-lang">Python</span>
+                </div>
+                <div class="code-content">
+<pre><span class="keyword">class</span> <span class="class">ContextInjector</span>:
+    <span class="string">"""Injects multi-layer context into agent prompts."""</span>
+    
+    <span class="keyword">def</span> <span class="function">__init__</span>(self, context_manager: <span class="class">ContextManager</span>):
+        self.cm = context_manager
+    
+    <span class="decorator">@traceable</span>(name=<span class="string">"build_full_context"</span>)
+    <span class="keyword">async def</span> <span class="function">build_messages</span>(
+        self,
+        agent: <span class="class">BaseAgent</span>,
+        state: <span class="class">HarnessState</span>,
+        swarm_state: Optional[<span class="class">SwarmState</span>] = <span class="keyword">None</span>
+    ) -> List[<span class="class">BaseMessage</span>]:
+        <span class="string">"""Build complete message list with all context layers."""</span>
+        
+        messages = []
+        
+        <span class="comment"># Layer 1: System Context (in system message)</span>
+        system_content = agent.system_prompt
+        messages.append(<span class="class">SystemMessage</span>(content=system_content))
+        
+        <span class="comment"># Layer 2: Kernel Memory (injected as context)</span>
+        kernel_memory = <span class="keyword">await</span> self.cm.load_kernel_memory(
+            customer_id=state.get(<span class="string">"customer_id"</span>),
+            system_ids=state.get(<span class="string">"affected_systems"</span>, [])
+        )
+        <span class="keyword">if</span> kernel_memory:
+            messages.append(<span class="class">HumanMessage</span>(
+                content=<span class="string">f"## Customer &amp; System Context\n</span>{<span class="function">format_kernel</span>(kernel_memory)}<span class="string">"</span>
+            ))
+        
+        <span class="comment"># Layer 3: Shared Context Bus (if in swarm mode)</span>
+        <span class="keyword">if</span> swarm_state <span class="keyword">and</span> swarm_state.get(<span class="string">"agent_findings"</span>):
+            shared_context = self.cm.build_shared_context(
+                swarm_state[<span class="string">"agent_findings"</span>],
+                swarm_state.get(<span class="string">"conflicts"</span>, [])
+            )
+            messages.append(<span class="class">HumanMessage</span>(
+                content=<span class="string">f"## Other Agents' Findings\n</span>{shared_context}<span class="string">"</span>
+            ))
+        
+        <span class="comment"># Layer 4: Working Context (current investigation state)</span>
+        working_context = self.cm.build_working_context(state)
+        messages.append(<span class="class">HumanMessage</span>(
+            content=<span class="string">f"## Current Investigation State\n</span>{working_context}<span class="string">"</span>
+        ))
+        
+        <span class="comment"># Layer 5: Output instruction (what to generate)</span>
+        phase = state.get(<span class="string">"current_phase"</span>, <span class="string">"THINK"</span>)
+        output_instruction = self.<span class="function">get_phase_instruction</span>(phase)
+        messages.append(<span class="class">HumanMessage</span>(content=output_instruction))
+        
+        <span class="keyword">return</span> messages
+    
+    <span class="keyword">def</span> <span class="function">get_phase_instruction</span>(self, phase: <span class="class">str</span>) -> <span class="class">str</span>:
+        <span class="string">"""Get output instruction for current phase."""</span>
+        instructions = {
+            <span class="string">"THINK"</span>: <span class="string">"Analyze the context and produce hypotheses with an investigation plan."</span>,
+            <span class="string">"ACT"</span>: <span class="string">"Execute the planned tools and gather evidence."</span>,
+            <span class="string">"OBSERVE"</span>: <span class="string">"Analyze the evidence and update hypothesis confidence."</span>,
+            <span class="string">"EVALUATE"</span>: <span class="string">"Decide: continue investigating, complete with finding, or escalate."</span>
+        }
+        <span class="keyword">return</span> instructions.get(phase, <span class="string">"Proceed with the investigation."</span>)</pre>
+                </div>
+            </div>
+
+            <div class="callout tip">
+                <div class="callout-icon">🔗</div>
+                <div>
+                    <h4>Context Layering Benefits</h4>
+                    <p>Each layer is independently manageable: System prompts version-controlled, kernel memory cached, shared bus updated in real-time, working context checkpointed. This enables granular optimization and debugging.</p>
+                </div>
+            </div>
+        </section>
+
+        <div class="nav-footer">
+            <a href="haci_langsmith_6_swarm.html" class="nav-btn">
+                <span>←</span>
+                <div>
+                    <div class="nav-btn-label">Previous</div>
+                    <div class="nav-btn-title">Multi-Agent Swarm</div>
+                </div>
+            </a>
+            <a href="haci_langsmith_8_hitl.html" class="nav-btn">
+                <div>
+                    <div class="nav-btn-label">Next</div>
+                    <div class="nav-btn-title">Human-in-the-Loop</div>
+                </div>
+                <span>→</span>
+            </a>
+        </div>
+    </div>
+
+    <footer>
+        <p><strong>HACI on LangSmith</strong> — Harness-Enhanced Agentic Collaborative Intelligence</p>
+        <p style="margin-top: 0.5rem;">Page 7 of 10 • Context Engineering Integration</p>
+    </footer>
+</body>
+</html>

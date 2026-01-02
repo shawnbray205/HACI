@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HACI on LangSmith - Harness Phases Deep Dive</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #7c3aed;
+            --success: #059669;
+            --warning: #d97706;
+            --danger: #dc2626;
+            --info: #0891b2;
+            --langchain-green: #10b981;
+            --think-blue: #3b82f6;
+            --act-green: #22c55e;
+            --observe-orange: #f59e0b;
+            --evaluate-purple: #8b5cf6;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: var(--gray-800);
+            background: var(--gray-50);
+        }
+
+        /* Navigation */
+        .nav {
+            position: sticky;
+            top: 0;
+            background: white;
+            border-bottom: 1px solid var(--gray-200);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .nav-brand {
+            font-weight: 700;
+            font-size: 1.25rem;
+            color: var(--gray-900);
+        }
+
+        .nav-brand span {
+            color: var(--observe-orange);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: var(--gray-600);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+        .nav-links a:hover {
+            background: var(--gray-100);
+            color: var(--gray-900);
+        }
+
+        .nav-links a.active {
+            background: linear-gradient(135deg, var(--observe-orange), var(--primary));
+            color: white;
+        }
+
+        .page-indicator {
+            background: var(--gray-100);
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            color: var(--gray-600);
+        }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, var(--observe-orange), var(--primary), var(--langchain-green));
+            color: white;
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+
+        .hero h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            font-weight: 800;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            opacity: 0.95;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        /* Stats Bar */
+        .stats-bar {
+            background: white;
+            border-bottom: 1px solid var(--gray-200);
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: center;
+            gap: 4rem;
+            flex-wrap: wrap;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--gray-900);
+        }
+
+        .stat-value.think { color: var(--think-blue); }
+        .stat-value.act { color: var(--act-green); }
+        .stat-value.observe { color: var(--observe-orange); }
+        .stat-value.evaluate { color: var(--evaluate-purple); }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--gray-600);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Main Content */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+
+        .section {
+            margin-bottom: 4rem;
+        }
+
+        .section-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 3px solid var(--gray-200);
+            position: relative;
+            text-align: center;
+        }
+
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -3px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 3px;
+            background: linear-gradient(90deg, var(--observe-orange), var(--primary));
+        }
+
+        /* Phase Diagram */
+        .phase-diagram {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+        }
+
+        .phase-box {
+            padding: 1.5rem 2rem;
+            border-radius: 12px;
+            color: white;
+            font-weight: 700;
+            font-size: 1.125rem;
+            text-align: center;
+            min-width: 140px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .phase-box.think { background: linear-gradient(135deg, var(--think-blue), #1d4ed8); }
+        .phase-box.act { background: linear-gradient(135deg, var(--act-green), #16a34a); }
+        .phase-box.observe { background: linear-gradient(135deg, var(--observe-orange), #ea580c); }
+        .phase-box.evaluate { background: linear-gradient(135deg, var(--evaluate-purple), #7c3aed); }
+
+        .phase-box small {
+            display: block;
+            font-weight: 400;
+            font-size: 0.75rem;
+            opacity: 0.9;
+            margin-top: 0.25rem;
+        }
+
+        .phase-arrow {
+            font-size: 1.5rem;
+            color: var(--gray-400);
+        }
+
+        /* Phase Cards */
+        .phase-card {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            border: 1px solid var(--gray-200);
+        }
+
+        .phase-card-header {
+            padding: 1.5rem 2rem;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .phase-card-header.think { background: linear-gradient(135deg, var(--think-blue), #1d4ed8); }
+        .phase-card-header.act { background: linear-gradient(135deg, var(--act-green), #16a34a); }
+        .phase-card-header.observe { background: linear-gradient(135deg, var(--observe-orange), #ea580c); }
+        .phase-card-header.evaluate { background: linear-gradient(135deg, var(--evaluate-purple), #7c3aed); }
+
+        .phase-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .phase-card-header h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .phase-card-header p {
+            opacity: 0.9;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+
+        .phase-card-body {
+            padding: 2rem;
+        }
+
+        /* Code Blocks */
+        .code-block {
+            background: #1e1e1e;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 1.5rem 0;
+        }
+
+        .code-header {
+            background: #2d2d2d;
+            padding: 0.75rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #404040;
+        }
+
+        .code-filename {
+            color: #9ca3af;
+            font-size: 0.875rem;
+            font-family: 'Fira Code', monospace;
+        }
+
+        .code-lang {
+            color: #10b981;
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            background: rgba(16,185,129,0.1);
+            border-radius: 4px;
+        }
+
+        .code-content {
+            padding: 1.5rem;
+            overflow-x: auto;
+        }
+
+        pre {
+            margin: 0;
+            font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+            font-size: 0.875rem;
+            line-height: 1.6;
+            color: #e5e7eb;
+        }
+
+        .keyword { color: #c586c0; }
+        .string { color: #ce9178; }
+        .function { color: #dcdcaa; }
+        .class { color: #4ec9b0; }
+        .comment { color: #6a9955; }
+        .decorator { color: #d7ba7d; }
+        .number { color: #b5cea8; }
+        .variable { color: #9cdcfe; }
+        .operator { color: #d4d4d4; }
+
+        /* Callout Boxes */
+        .callout {
+            padding: 1.25rem 1.5rem;
+            border-radius: 12px;
+            margin: 1.5rem 0;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .callout-icon {
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .callout.info {
+            background: linear-gradient(135deg, rgba(8,145,178,0.1), rgba(6,182,212,0.05));
+            border-left: 4px solid var(--info);
+        }
+
+        .callout.success {
+            background: linear-gradient(135deg, rgba(5,150,105,0.1), rgba(16,185,129,0.05));
+            border-left: 4px solid var(--success);
+        }
+
+        .callout.warning {
+            background: linear-gradient(135deg, rgba(217,119,6,0.1), rgba(245,158,11,0.05));
+            border-left: 4px solid var(--warning);
+        }
+
+        .callout.tip {
+            background: linear-gradient(135deg, rgba(139,92,246,0.1), rgba(167,139,250,0.05));
+            border-left: 4px solid var(--secondary);
+        }
+
+        .callout h4 {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--gray-800);
+        }
+
+        .callout p {
+            color: var(--gray-700);
+            font-size: 0.9375rem;
+        }
+
+        /* Output Schema */
+        .schema-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .schema-item {
+            background: var(--gray-50);
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            padding: 1rem;
+        }
+
+        .schema-item-name {
+            font-family: 'Fira Code', monospace;
+            font-size: 0.875rem;
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .schema-item-type {
+            font-family: 'Fira Code', monospace;
+            font-size: 0.75rem;
+            color: var(--success);
+            background: rgba(5,150,105,0.1);
+            padding: 0.125rem 0.5rem;
+            border-radius: 4px;
+            display: inline-block;
+            margin: 0.25rem 0;
+        }
+
+        .schema-item-desc {
+            font-size: 0.8125rem;
+            color: var(--gray-600);
+        }
+
+        /* Tables */
+        .table-wrapper {
+            overflow-x: auto;
+            margin: 1.5rem 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        th, td {
+            padding: 1rem 1.25rem;
+            text-align: left;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        th {
+            background: var(--gray-100);
+            font-weight: 600;
+            color: var(--gray-700);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        td {
+            color: var(--gray-700);
+            font-size: 0.9375rem;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* State Flow Diagram */
+        .state-flow {
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+
+        .flow-step {
+            display: flex;
+            align-items: flex-start;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px dashed var(--gray-200);
+        }
+
+        .flow-step:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .flow-num {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--observe-orange), var(--primary));
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .flow-content h4 {
+            font-size: 1.125rem;
+            color: var(--gray-800);
+            margin-bottom: 0.5rem;
+        }
+
+        .flow-content p {
+            color: var(--gray-600);
+            font-size: 0.9375rem;
+        }
+
+        /* Navigation Footer */
+        .nav-footer {
+            display: flex;
+            justify-content: space-between;
+            padding: 2rem 0;
+            margin-top: 2rem;
+            border-top: 1px solid var(--gray-200);
+        }
+
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 1.5rem;
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--gray-700);
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            box-shadow: 0 4px 12px rgba(37,99,235,0.15);
+        }
+
+        .nav-btn-label {
+            font-size: 0.75rem;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .nav-btn-title {
+            font-weight: 600;
+        }
+
+        /* Footer */
+        footer {
+            background: var(--gray-900);
+            color: var(--gray-400);
+            padding: 2rem;
+            text-align: center;
+            font-size: 0.875rem;
+        }
+
+        footer strong {
+            color: white;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2rem; }
+            .stats-bar { gap: 2rem; }
+            .phase-diagram { flex-direction: column; }
+            .phase-arrow { transform: rotate(90deg); }
+            .nav-links { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-brand">HACI <span>LangSmith</span></div>
+        <div class="nav-links">
+            <a href="haci_langsmith_1_setup.html">Setup</a>
+            <a href="haci_langsmith_2_graph.html">Graph</a>
+            <a href="haci_langsmith_3_agents.html">Agents</a>
+            <a href="haci_langsmith_4_observability.html">Observability</a>
+            <a href="haci_langsmith_5_harness_phases.html" class="active">Phases</a>
+            <a href="haci_langsmith_6_swarm.html">Swarm</a>
+            <a href="haci_langsmith_7_context.html">Context</a>
+            <a href="haci_langsmith_8_hitl.html">HITL</a>
+            <a href="haci_langsmith_9_testing.html">Testing</a>
+            <a href="haci_langsmith_10_deployment.html">Deploy</a>
+            <span class="page-indicator">5 of 10</span>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <h1>🔄 Harness Phases Deep Dive</h1>
+        <p>Master the THINK → ACT → OBSERVE → EVALUATE cycle with complete implementation patterns, state management, and cognitive reasoning architecture</p>
+    </section>
+
+    <!-- Stats Bar -->
+    <div class="stats-bar">
+        <div class="stat">
+            <div class="stat-value think">THINK</div>
+            <div class="stat-label">Hypothesis Formation</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value act">ACT</div>
+            <div class="stat-label">Tool Execution</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value observe">OBSERVE</div>
+            <div class="stat-label">Evidence Analysis</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value evaluate">EVALUATE</div>
+            <div class="stat-label">Decision Making</div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Phase Overview -->
+        <section class="section">
+            <h2 class="section-title">The Harness Cycle</h2>
+            
+            <div class="phase-diagram">
+                <div class="phase-box think">
+                    🧠 THINK
+                    <small>Form Hypotheses</small>
+                </div>
+                <div class="phase-arrow">→</div>
+                <div class="phase-box act">
+                    ⚡ ACT
+                    <small>Execute Tools</small>
+                </div>
+                <div class="phase-arrow">→</div>
+                <div class="phase-box observe">
+                    👁️ OBSERVE
+                    <small>Analyze Results</small>
+                </div>
+                <div class="phase-arrow">→</div>
+                <div class="phase-box evaluate">
+                    📊 EVALUATE
+                    <small>Make Decision</small>
+                </div>
+            </div>
+
+            <div class="callout info">
+                <div class="callout-icon">💡</div>
+                <div>
+                    <h4>Cognitive Control Loop</h4>
+                    <p>Each phase maps to a distinct node in LangGraph, enabling precise tracing, state checkpointing, and human intervention at any point in the investigation cycle.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- THINK Phase -->
+        <section class="section">
+            <div class="phase-card">
+                <div class="phase-card-header think">
+                    <div class="phase-icon">🧠</div>
+                    <div>
+                        <h3>THINK Phase</h3>
+                        <p>Hypothesis formation and investigation planning</p>
+                    </div>
+                </div>
+                <div class="phase-card-body">
+                    <h4 style="margin-bottom: 1rem;">Purpose</h4>
+                    <p style="margin-bottom: 1.5rem;">The THINK phase analyzes the current context, forms hypotheses about potential root causes, and creates a structured investigation plan. This is the cognitive core of the harness.</p>
+
+                    <h4 style="margin-bottom: 1rem;">Output Schema</h4>
+                    <div class="schema-grid">
+                        <div class="schema-item">
+                            <div class="schema-item-name">hypotheses</div>
+                            <div class="schema-item-type">List[Hypothesis]</div>
+                            <div class="schema-item-desc">Ranked possible causes with confidence scores</div>
+                        </div>
+                        <div class="schema-item">
+                            <div class="schema-item-name">investigation_plan</div>
+                            <div class="schema-item-type">List[str]</div>
+                            <div class="schema-item-desc">Ordered steps to validate hypotheses</div>
+                        </div>
+                        <div class="schema-item">
+                            <div class="schema-item-name">tool_calls_planned</div>
+                            <div class="schema-item-type">List[ToolCall]</div>
+                            <div class="schema-item-desc">Specific tools to execute next</div>
+                        </div>
+                        <div class="schema-item">
+                            <div class="schema-item-name">reasoning</div>
+                            <div class="schema-item-type">str</div>
+                            <div class="schema-item-desc">Explanation of the thought process</div>
+                        </div>
+                    </div>
+
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-filename">src/phases/think_phase.py</span>
+                            <span class="code-lang">Python</span>
+                        </div>
+                        <div class="code-content">
+<pre><span class="keyword">from</span> langsmith <span class="keyword">import</span> traceable
+<span class="keyword">from</span> typing <span class="keyword">import</span> List, Optional
+<span class="keyword">from</span> pydantic <span class="keyword">import</span> BaseModel, Field
+
+<span class="keyword">class</span> <span class="class">Hypothesis</span>(BaseModel):
+    <span class="string">"""A hypothesis about the potential root cause."""</span>
+    description: <span class="class">str</span> = Field(..., description=<span class="string">"What we think might be causing the issue"</span>)
+    confidence: <span class="class">float</span> = Field(..., ge=<span class="number">0.0</span>, le=<span class="number">1.0</span>, description=<span class="string">"Initial confidence 0-1"</span>)
+    evidence_needed: List[<span class="class">str</span>] = Field(default_factory=<span class="keyword">list</span>, description=<span class="string">"What we need to validate"</span>)
+    validation_tools: List[<span class="class">str</span>] = Field(default_factory=<span class="keyword">list</span>, description=<span class="string">"Tools to gather evidence"</span>)
+
+<span class="keyword">class</span> <span class="class">ThinkOutput</span>(BaseModel):
+    <span class="string">"""Structured output from THINK phase."""</span>
+    hypotheses: List[<span class="class">Hypothesis</span>]
+    investigation_plan: List[<span class="class">str</span>]
+    reasoning: <span class="class">str</span>
+    next_tools: List[<span class="class">str</span>]
+
+<span class="decorator">@traceable</span>(name=<span class="string">"think_phase"</span>, metadata={<span class="string">"phase"</span>: <span class="string">"THINK"</span>})
+<span class="keyword">async def</span> <span class="function">think_node</span>(state: <span class="class">HarnessState</span>) -> <span class="class">dict</span>:
+    <span class="string">"""
+    THINK phase: Analyze context and form hypotheses.
+    
+    This node receives the current state and produces:
+    - Hypotheses ranked by likelihood
+    - Investigation plan for validation
+    - Tool calls to execute in ACT phase
+    """</span>
+    
+    <span class="comment"># Build context from state</span>
+    context = <span class="function">build_think_context</span>(state)
+    
+    <span class="comment"># Previous observations inform new hypotheses</span>
+    prior_observations = state.get(<span class="string">"observations"</span>, [])
+    prior_hypotheses = state.get(<span class="string">"hypotheses"</span>, [])
+    
+    <span class="comment"># System prompt for THINK phase</span>
+    system_prompt = <span class="string">"""You are an expert investigator in the THINK phase.
+
+Your task is to analyze the available information and:
+1. Form hypotheses about potential root causes
+2. Rank hypotheses by likelihood based on evidence
+3. Create a focused investigation plan
+4. Identify specific tools needed to validate hypotheses
+
+Consider:
+- Previous observations that may support or refute hypotheses
+- Correlations between symptoms and potential causes
+- The severity and impact of the issue
+- What evidence would definitively validate each hypothesis
+
+Output your analysis in structured JSON format."""</span>
+    
+    <span class="comment"># Build user prompt with context</span>
+    user_prompt = <span class="function">format_think_prompt</span>(
+        ticket=state[<span class="string">"ticket_description"</span>],
+        severity=state[<span class="string">"ticket_severity"</span>],
+        prior_observations=prior_observations,
+        prior_hypotheses=prior_hypotheses,
+        iteration=state.get(<span class="string">"iteration_count"</span>, <span class="number">1</span>)
+    )
+    
+    <span class="comment"># Call LLM with structured output</span>
+    llm = <span class="class">ChatAnthropic</span>(model=<span class="string">"claude-sonnet-4-20250514"</span>)
+    structured_llm = llm.with_structured_output(<span class="class">ThinkOutput</span>)
+    
+    result = <span class="keyword">await</span> structured_llm.ainvoke([
+        <span class="class">SystemMessage</span>(content=system_prompt),
+        <span class="class">HumanMessage</span>(content=user_prompt)
+    ])
+    
+    <span class="comment"># Return state updates (uses Annotated reducers)</span>
+    <span class="keyword">return</span> {
+        <span class="string">"hypotheses"</span>: result.hypotheses,  <span class="comment"># Appends to existing</span>
+        <span class="string">"investigation_plan"</span>: result.investigation_plan,
+        <span class="string">"pending_tool_calls"</span>: result.next_tools,
+        <span class="string">"current_phase"</span>: <span class="string">"ACT"</span>
+    }</pre>
+                        </div>
+                    </div>
+
+                    <div class="callout tip">
+                        <div class="callout-icon">💜</div>
+                        <div>
+                            <h4>Hypothesis Evolution</h4>
+                            <p>In subsequent iterations, the THINK phase refines hypotheses based on new observations. Initial broad hypotheses become specific as evidence accumulates.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ACT Phase -->
+        <section class="section">
+            <div class="phase-card">
+                <div class="phase-card-header act">
+                    <div class="phase-icon">⚡</div>
+                    <div>
+                        <h3>ACT Phase</h3>
+                        <p>Tool execution and evidence gathering</p>
+                    </div>
+                </div>
+                <div class="phase-card-body">
+                    <h4 style="margin-bottom: 1rem;">Purpose</h4>
+                    <p style="margin-bottom: 1.5rem;">The ACT phase executes the tools identified in THINK, gathering evidence to validate or refute hypotheses. It handles tool errors gracefully and tracks execution metadata.</p>
+
+                    <h4 style="margin-bottom: 1rem;">Output Schema</h4>
+                    <div class="schema-grid">
+                        <div class="schema-item">
+                            <div class="schema-item-name">tool_results</div>
+                            <div class="schema-item-type">List[ToolResult]</div>
+                            <div class="schema-item-desc">Results from executed tools</div>
+                        </div>
+                        <div class="schema-item">
+                            <div class="schema-item-name">tool_errors</div>
+                            <div class="schema-item-type">List[ToolError]</div>
+                            <div class="schema-item-desc">Any errors encountered</div>
+                        </div>
+                        <div class="schema-item">
+                            <div class="schema-item-name">execution_time_ms</div>
+                            <div class="schema-item-type">int</div>
+                            <div class="schema-item-desc">Total execution duration</div>
+                        </div>
+                        <div class="schema-item">
+                            <div class="schema-item-name">raw_evidence</div>
+                            <div class="schema-item-type">Dict[str, Any]</div>
+                            <div class="schema-item-desc">Unprocessed tool outputs</div>
+                        </div>
+                    </div>
+
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-filename">src/phases/act_phase.py</span>
+                            <span class="code-lang">Python</span>
+                        </div>
+                        <div class="code-content">
+<pre><span class="keyword">from</span> langsmith <span class="keyword">import</span> traceable
+<span class="keyword">from</span> langchain_core.tools <span class="keyword">import</span> BaseTool
+<span class="keyword">import</span> asyncio
+<span class="keyword">import</span> time
+
+<span class="keyword">class</span> <span class="class">ToolResult</span>(BaseModel):
+    <span class="string">"""Result from a tool execution."""</span>
+    tool_name: <span class="class">str</span>
+    success: <span class="class">bool</span>
+    output: <span class="class">Any</span>
+    execution_time_ms: <span class="class">int</span>
+    metadata: <span class="class">dict</span> = Field(default_factory=<span class="keyword">dict</span>)
+
+<span class="keyword">class</span> <span class="class">ToolError</span>(BaseModel):
+    <span class="string">"""Error from a tool execution."""</span>
+    tool_name: <span class="class">str</span>
+    error_type: <span class="class">str</span>
+    error_message: <span class="class">str</span>
+    recoverable: <span class="class">bool</span>
+
+<span class="decorator">@traceable</span>(name=<span class="string">"act_phase"</span>, metadata={<span class="string">"phase"</span>: <span class="string">"ACT"</span>})
+<span class="keyword">async def</span> <span class="function">act_node</span>(state: <span class="class">HarnessState</span>) -> <span class="class">dict</span>:
+    <span class="string">"""
+    ACT phase: Execute tools to gather evidence.
+    
+    Key responsibilities:
+    - Execute tools identified in THINK phase
+    - Handle errors gracefully with fallbacks
+    - Track execution metadata for observability
+    - Rate limit and parallelize appropriately
+    """</span>
+    
+    pending_tools = state.get(<span class="string">"pending_tool_calls"</span>, [])
+    tool_registry = <span class="function">get_tool_registry</span>()
+    
+    results: List[<span class="class">ToolResult</span>] = []
+    errors: List[<span class="class">ToolError</span>] = []
+    
+    start_time = time.time()
+    
+    <span class="comment"># Execute tools with controlled concurrency</span>
+    semaphore = asyncio.Semaphore(<span class="number">3</span>)  <span class="comment"># Max 3 concurrent tools</span>
+    
+    <span class="keyword">async def</span> <span class="function">execute_with_semaphore</span>(tool_call: <span class="class">dict</span>):
+        <span class="keyword">async with</span> semaphore:
+            <span class="keyword">return await</span> <span class="function">execute_single_tool</span>(tool_call, tool_registry)
+    
+    <span class="comment"># Run tools concurrently</span>
+    tasks = [<span class="function">execute_with_semaphore</span>(tc) <span class="keyword">for</span> tc <span class="keyword">in</span> pending_tools]
+    task_results = <span class="keyword">await</span> asyncio.gather(*tasks, return_exceptions=<span class="keyword">True</span>)
+    
+    <span class="keyword">for</span> tool_call, result <span class="keyword">in</span> <span class="function">zip</span>(pending_tools, task_results):
+        <span class="keyword">if</span> isinstance(result, <span class="class">Exception</span>):
+            errors.append(<span class="class">ToolError</span>(
+                tool_name=tool_call[<span class="string">"name"</span>],
+                error_type=type(result).__name__,
+                error_message=<span class="function">str</span>(result),
+                recoverable=<span class="function">is_recoverable_error</span>(result)
+            ))
+        <span class="keyword">else</span>:
+            results.append(result)
+    
+    total_time_ms = <span class="function">int</span>((time.time() - start_time) * <span class="number">1000</span>)
+    
+    <span class="comment"># Compile raw evidence for OBSERVE phase</span>
+    raw_evidence = {
+        r.tool_name: r.output <span class="keyword">for</span> r <span class="keyword">in</span> results <span class="keyword">if</span> r.success
+    }
+    
+    <span class="keyword">return</span> {
+        <span class="string">"tool_results"</span>: results,
+        <span class="string">"tool_errors"</span>: errors,
+        <span class="string">"raw_evidence"</span>: raw_evidence,
+        <span class="string">"execution_metadata"</span>: {
+            <span class="string">"total_time_ms"</span>: total_time_ms,
+            <span class="string">"tools_executed"</span>: <span class="function">len</span>(results),
+            <span class="string">"tools_failed"</span>: <span class="function">len</span>(errors)
+        },
+        <span class="string">"current_phase"</span>: <span class="string">"OBSERVE"</span>
+    }
+
+<span class="decorator">@traceable</span>(name=<span class="string">"execute_tool"</span>)
+<span class="keyword">async def</span> <span class="function">execute_single_tool</span>(
+    tool_call: <span class="class">dict</span>,
+    registry: <span class="class">dict</span>[<span class="class">str</span>, <span class="class">BaseTool</span>]
+) -> <span class="class">ToolResult</span>:
+    <span class="string">"""Execute a single tool with timing and error handling."""</span>
+    
+    tool_name = tool_call[<span class="string">"name"</span>]
+    tool_args = tool_call.get(<span class="string">"arguments"</span>, {})
+    
+    <span class="keyword">if</span> tool_name <span class="keyword">not in</span> registry:
+        <span class="keyword">raise</span> <span class="class">ValueError</span>(<span class="string">f"Unknown tool: </span>{tool_name}<span class="string">"</span>)
+    
+    tool = registry[tool_name]
+    start = time.time()
+    
+    <span class="keyword">try</span>:
+        output = <span class="keyword">await</span> tool.ainvoke(tool_args)
+        <span class="keyword">return</span> <span class="class">ToolResult</span>(
+            tool_name=tool_name,
+            success=<span class="keyword">True</span>,
+            output=output,
+            execution_time_ms=<span class="function">int</span>((time.time() - start) * <span class="number">1000</span>),
+            metadata={<span class="string">"args"</span>: tool_args}
+        )
+    <span class="keyword">except</span> <span class="class">Exception</span> <span class="keyword">as</span> e:
+        <span class="keyword">return</span> <span class="class">ToolResult</span>(
+            tool_name=tool_name,
+            success=<span class="keyword">False</span>,
+            output={<span class="string">"error"</span>: <span class="function">str</span>(e)},
+            execution_time_ms=<span class="function">int</span>((time.time() - start) * <span class="number">1000</span>),
+            metadata={<span class="string">"args"</span>: tool_args, <span class="string">"error_type"</span>: type(e).__name__}
+        )</pre>
+                        </div>
+                    </div>
+
+                    <div class="callout warning">
+                        <div class="callout-icon">⚠️</div>
+                        <div>
+                            <h4>Concurrency Control</h4>
+                            <p>Use semaphores to limit concurrent tool execution. External APIs may rate-limit requests, and database queries should be throttled to avoid overload.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- OBSERVE Phase -->
+        <section class="section">
+            <div class="phase-card">
+                <div class="phase-card-header observe">
+                    <div class="phase-icon">👁️</div>
+                    <div>
+                        <h3>OBSERVE Phase</h3>
+                        <p>Evidence analysis and pattern recognition</p>
+                    </div>
+                </div>
+                <div class="phase-card-body">
+                    <h4 style="margin-bottom: 1rem;">Purpose</h4>
+                    <p style="margin-bottom: 1.5rem;">The OBSERVE phase analyzes raw tool outputs, identifies patterns and correlations, updates hypothesis confidence scores, and surfaces gaps requiring additional investigation.</p>
+
+                    <h4 style="margin-bottom: 1rem;">Output Schema</h4>
+                    <div class="schema-grid">
+                        <div class="schema-item">
+                            <div class="schema-item-name">observations</div>
+                            <div class="schema-item-type">List[Observation]</div>
+                            <div class="schema-item-desc">Insights extracted from evidence</div>
+                        </div>
+                        <div class="schema-item">
+                            <div class="schema-item-name">correlations</div>
+                            <div class="schema-item-type">List[Correlation]</div>
+                            <div class="schema-item-desc">Patterns across data sources</div>
+                        </div>
+                        <div class="schema-item">
+                            <div class="schema-item-name">hypothesis_updates</div>
+                            <div class="schema-item-type">Dict[str, float]</div>
+                            <div class="schema-item-desc">Confidence adjustments per hypothesis</div>
+                        </div>
+                        <div class="schema-item">
+                            <div class="schema-item-name">gaps</div>
+                            <div class="schema-item-type">List[str]</div>
+                            <div class="schema-item-desc">Missing information identified</div>
+                        </div>
+                    </div>
+
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-filename">src/phases/observe_phase.py</span>
+                            <span class="code-lang">Python</span>
+                        </div>
+                        <div class="code-content">
+<pre><span class="keyword">from</span> langsmith <span class="keyword">import</span> traceable
+
+<span class="keyword">class</span> <span class="class">Observation</span>(BaseModel):
+    <span class="string">"""An insight extracted from evidence."""</span>
+    source_tool: <span class="class">str</span>
+    finding: <span class="class">str</span>
+    significance: <span class="class">str</span>  <span class="comment"># high, medium, low</span>
+    supports_hypotheses: List[<span class="class">str</span>]
+    refutes_hypotheses: List[<span class="class">str</span>]
+
+<span class="keyword">class</span> <span class="class">Correlation</span>(BaseModel):
+    <span class="string">"""A pattern observed across multiple data sources."""</span>
+    sources: List[<span class="class">str</span>]
+    pattern: <span class="class">str</span>
+    confidence: <span class="class">float</span>
+    implication: <span class="class">str</span>
+
+<span class="keyword">class</span> <span class="class">ObserveOutput</span>(BaseModel):
+    <span class="string">"""Structured output from OBSERVE phase."""</span>
+    observations: List[<span class="class">Observation</span>]
+    correlations: List[<span class="class">Correlation</span>]
+    hypothesis_confidence_updates: <span class="class">dict</span>[<span class="class">str</span>, <span class="class">float</span>]
+    gaps_identified: List[<span class="class">str</span>]
+    analysis_summary: <span class="class">str</span>
+
+<span class="decorator">@traceable</span>(name=<span class="string">"observe_phase"</span>, metadata={<span class="string">"phase"</span>: <span class="string">"OBSERVE"</span>})
+<span class="keyword">async def</span> <span class="function">observe_node</span>(state: <span class="class">HarnessState</span>) -> <span class="class">dict</span>:
+    <span class="string">"""
+    OBSERVE phase: Analyze evidence and update hypotheses.
+    
+    Key responsibilities:
+    - Extract insights from raw tool outputs
+    - Identify correlations across data sources
+    - Update hypothesis confidence based on evidence
+    - Surface gaps requiring additional investigation
+    """</span>
+    
+    raw_evidence = state.get(<span class="string">"raw_evidence"</span>, {})
+    current_hypotheses = state.get(<span class="string">"hypotheses"</span>, [])
+    tool_errors = state.get(<span class="string">"tool_errors"</span>, [])
+    
+    system_prompt = <span class="string">"""You are an expert analyst in the OBSERVE phase.
+
+Your task is to analyze the evidence gathered and:
+1. Extract key observations from each tool's output
+2. Identify correlations and patterns across sources
+3. Update confidence scores for each hypothesis
+4. Identify gaps - what information is still missing?
+
+For each observation, note:
+- Which hypothesis it supports or refutes
+- The significance level (high/medium/low)
+- Any temporal or causal relationships
+
+Be precise and evidence-based. Avoid speculation beyond what the data shows.
+Output your analysis in structured JSON format."""</span>
+    
+    <span class="comment"># Format evidence for analysis</span>
+    evidence_text = <span class="function">format_evidence_for_analysis</span>(raw_evidence, tool_errors)
+    hypotheses_text = <span class="function">format_hypotheses</span>(current_hypotheses)
+    
+    user_prompt = <span class="string">f"""## Current Hypotheses
+</span>{hypotheses_text}<span class="string">
+
+## Evidence Collected
+</span>{evidence_text}<span class="string">
+
+## Tool Errors (if any)
+</span>{<span class="function">format_errors</span>(tool_errors)}<span class="string">
+
+Analyze this evidence and provide structured observations."""</span>
+    
+    llm = <span class="class">ChatAnthropic</span>(model=<span class="string">"claude-sonnet-4-20250514"</span>)
+    structured_llm = llm.with_structured_output(<span class="class">ObserveOutput</span>)
+    
+    result = <span class="keyword">await</span> structured_llm.ainvoke([
+        <span class="class">SystemMessage</span>(content=system_prompt),
+        <span class="class">HumanMessage</span>(content=user_prompt)
+    ])
+    
+    <span class="comment"># Apply confidence updates to hypotheses</span>
+    updated_hypotheses = <span class="function">apply_confidence_updates</span>(
+        current_hypotheses,
+        result.hypothesis_confidence_updates
+    )
+    
+    <span class="keyword">return</span> {
+        <span class="string">"observations"</span>: result.observations,  <span class="comment"># Appends via reducer</span>
+        <span class="string">"correlations"</span>: result.correlations,
+        <span class="string">"hypotheses"</span>: updated_hypotheses,
+        <span class="string">"gaps"</span>: result.gaps_identified,
+        <span class="string">"current_phase"</span>: <span class="string">"EVALUATE"</span>
+    }
+
+<span class="keyword">def</span> <span class="function">apply_confidence_updates</span>(
+    hypotheses: List[<span class="class">Hypothesis</span>],
+    updates: <span class="class">dict</span>[<span class="class">str</span>, <span class="class">float</span>]
+) -> List[<span class="class">Hypothesis</span>]:
+    <span class="string">"""Apply confidence adjustments with Bayesian-style updates."""</span>
+    updated = []
+    <span class="keyword">for</span> h <span class="keyword">in</span> hypotheses:
+        <span class="keyword">if</span> h.description <span class="keyword">in</span> updates:
+            <span class="comment"># Blend prior and new evidence</span>
+            delta = updates[h.description]
+            new_conf = <span class="function">min</span>(<span class="number">1.0</span>, <span class="function">max</span>(<span class="number">0.0</span>, h.confidence + delta))
+            h.confidence = new_conf
+        updated.append(h)
+    <span class="keyword">return</span> updated</pre>
+                        </div>
+                    </div>
+
+                    <div class="callout success">
+                        <div class="callout-icon">✅</div>
+                        <div>
+                            <h4>Evidence Chain</h4>
+                            <p>Each observation links back to its source tool, creating a traceable evidence chain. This is critical for audit logs and explainability.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- EVALUATE Phase -->
+        <section class="section">
+            <div class="phase-card">
+                <div class="phase-card-header evaluate">
+                    <div class="phase-icon">📊</div>
+                    <div>
+                        <h3>EVALUATE Phase</h3>
+                        <p>Decision making and loop control</p>
+                    </div>
+                </div>
+                <div class="phase-card-body">
+                    <h4 style="margin-bottom: 1rem;">Purpose</h4>
+                    <p style="margin-bottom: 1.5rem;">The EVALUATE phase makes the critical decision: continue investigating, complete with findings, or escalate to humans. It calculates overall confidence and determines if the investigation meets completion criteria.</p>
+
+                    <h4 style="margin-bottom: 1rem;">Decision Matrix</h4>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Condition</th>
+                                    <th>Decision</th>
+                                    <th>Next Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Confidence ≥ threshold</td>
+                                    <td><span style="color: var(--success); font-weight: 600;">COMPLETE</span></td>
+                                    <td>Generate finding, end graph</td>
+                                </tr>
+                                <tr>
+                                    <td>Confidence &lt; threshold, gaps exist</td>
+                                    <td><span style="color: var(--think-blue); font-weight: 600;">CONTINUE</span></td>
+                                    <td>Loop back to THINK</td>
+                                </tr>
+                                <tr>
+                                    <td>Max iterations reached</td>
+                                    <td><span style="color: var(--warning); font-weight: 600;">ESCALATE</span></td>
+                                    <td>Human gate interrupt</td>
+                                </tr>
+                                <tr>
+                                    <td>Conflicting evidence</td>
+                                    <td><span style="color: var(--warning); font-weight: 600;">ESCALATE</span></td>
+                                    <td>Human gate interrupt</td>
+                                </tr>
+                                <tr>
+                                    <td>High-risk hypothesis confirmed</td>
+                                    <td><span style="color: var(--danger); font-weight: 600;">ESCALATE</span></td>
+                                    <td>Human approval required</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-filename">src/phases/evaluate_phase.py</span>
+                            <span class="code-lang">Python</span>
+                        </div>
+                        <div class="code-content">
+<pre><span class="keyword">from</span> langsmith <span class="keyword">import</span> traceable
+<span class="keyword">from</span> enum <span class="keyword">import</span> Enum
+
+<span class="keyword">class</span> <span class="class">Decision</span>(<span class="class">str</span>, <span class="class">Enum</span>):
+    CONTINUE = <span class="string">"continue"</span>
+    COMPLETE = <span class="string">"complete"</span>
+    ESCALATE = <span class="string">"escalate"</span>
+
+<span class="keyword">class</span> <span class="class">Finding</span>(BaseModel):
+    <span class="string">"""Final investigation finding."""</span>
+    root_cause: <span class="class">str</span>
+    confidence: <span class="class">float</span>
+    supporting_evidence: List[<span class="class">str</span>]
+    recommended_actions: List[<span class="class">str</span>]
+    affected_systems: List[<span class="class">str</span>]
+
+<span class="keyword">class</span> <span class="class">EvaluateOutput</span>(BaseModel):
+    <span class="string">"""Structured output from EVALUATE phase."""</span>
+    decision: <span class="class">Decision</span>
+    overall_confidence: <span class="class">float</span>
+    confidence_breakdown: <span class="class">dict</span>[<span class="class">str</span>, <span class="class">float</span>]
+    finding: Optional[<span class="class">Finding</span>] = <span class="keyword">None</span>
+    escalation_reason: Optional[<span class="class">str</span>] = <span class="keyword">None</span>
+    next_investigation_focus: Optional[<span class="class">str</span>] = <span class="keyword">None</span>
+
+<span class="decorator">@traceable</span>(name=<span class="string">"evaluate_phase"</span>, metadata={<span class="string">"phase"</span>: <span class="string">"EVALUATE"</span>})
+<span class="keyword">async def</span> <span class="function">evaluate_node</span>(state: <span class="class">HarnessState</span>) -> <span class="class">dict</span>:
+    <span class="string">"""
+    EVALUATE phase: Make decision about investigation.
+    
+    Decision logic:
+    1. Calculate overall confidence from hypotheses
+    2. Check for conflicts or high-risk conditions
+    3. Determine if completion criteria are met
+    4. Generate finding if confident, or plan next iteration
+    """</span>
+    
+    hypotheses = state.get(<span class="string">"hypotheses"</span>, [])
+    observations = state.get(<span class="string">"observations"</span>, [])
+    gaps = state.get(<span class="string">"gaps"</span>, [])
+    iteration = state.get(<span class="string">"iteration_count"</span>, <span class="number">1</span>)
+    max_iterations = state.get(<span class="string">"max_iterations"</span>, <span class="number">5</span>)
+    confidence_threshold = state.get(<span class="string">"confidence_threshold"</span>, <span class="number">0.85</span>)
+    
+    <span class="comment"># Calculate confidence metrics</span>
+    top_hypothesis = <span class="function">get_highest_confidence_hypothesis</span>(hypotheses)
+    overall_confidence = <span class="function">calculate_weighted_confidence</span>(hypotheses, observations)
+    has_conflicts = <span class="function">detect_evidence_conflicts</span>(observations)
+    high_risk = <span class="function">is_high_risk_scenario</span>(top_hypothesis, state[<span class="string">"ticket_severity"</span>])
+    
+    <span class="comment"># Decision logic</span>
+    <span class="keyword">if</span> high_risk:
+        decision = <span class="class">Decision</span>.ESCALATE
+        reason = <span class="string">"High-risk scenario requires human approval"</span>
+    <span class="keyword">elif</span> has_conflicts:
+        decision = <span class="class">Decision</span>.ESCALATE
+        reason = <span class="string">"Conflicting evidence requires human judgment"</span>
+    <span class="keyword">elif</span> overall_confidence >= confidence_threshold:
+        decision = <span class="class">Decision</span>.COMPLETE
+        reason = <span class="keyword">None</span>
+    <span class="keyword">elif</span> iteration >= max_iterations:
+        decision = <span class="class">Decision</span>.ESCALATE
+        reason = <span class="string">f"Max iterations (</span>{max_iterations}<span class="string">) reached without confidence"</span>
+    <span class="keyword">else</span>:
+        decision = <span class="class">Decision</span>.CONTINUE
+        reason = <span class="keyword">None</span>
+    
+    <span class="comment"># Generate finding if completing</span>
+    finding = <span class="keyword">None</span>
+    <span class="keyword">if</span> decision == <span class="class">Decision</span>.COMPLETE:
+        finding = <span class="keyword">await</span> <span class="function">generate_finding</span>(top_hypothesis, observations)
+    
+    <span class="keyword">return</span> {
+        <span class="string">"decision"</span>: decision.value,
+        <span class="string">"current_confidence"</span>: overall_confidence,
+        <span class="string">"finding"</span>: finding,
+        <span class="string">"escalation_reason"</span>: reason,
+        <span class="string">"requires_human_approval"</span>: decision == <span class="class">Decision</span>.ESCALATE,
+        <span class="string">"iteration_count"</span>: iteration + <span class="number">1</span>,
+        <span class="string">"current_phase"</span>: <span class="string">"ROUTER"</span>
+    }
+
+<span class="keyword">def</span> <span class="function">route_after_evaluate</span>(state: <span class="class">HarnessState</span>) -> <span class="class">str</span>:
+    <span class="string">"""Conditional routing based on EVALUATE decision."""</span>
+    decision = state.get(<span class="string">"decision"</span>)
+    
+    <span class="keyword">if</span> decision == <span class="string">"complete"</span>:
+        <span class="keyword">return</span> <span class="string">"end"</span>
+    <span class="keyword">elif</span> decision == <span class="string">"escalate"</span>:
+        <span class="keyword">return</span> <span class="string">"human_gate"</span>
+    <span class="keyword">else</span>:  <span class="comment"># continue</span>
+        <span class="keyword">return</span> <span class="string">"think"</span>  <span class="comment"># Loop back to THINK</span></pre>
+                        </div>
+                    </div>
+
+                    <div class="callout info">
+                        <div class="callout-icon">🔄</div>
+                        <div>
+                            <h4>Loop Control</h4>
+                            <p>The EVALUATE phase controls the investigation loop. It increments the iteration counter and uses conditional edges to route back to THINK or terminate the graph.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- State Flow -->
+        <section class="section">
+            <h2 class="section-title">State Flow Through Phases</h2>
+            
+            <div class="state-flow">
+                <div class="flow-step">
+                    <div class="flow-num">1</div>
+                    <div class="flow-content">
+                        <h4>Initial State Created</h4>
+                        <p>State initialized with ticket context, execution mode, empty hypotheses/observations lists, iteration_count=1, current_phase="THINK"</p>
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-num">2</div>
+                    <div class="flow-content">
+                        <h4>THINK Updates State</h4>
+                        <p>Adds hypotheses[] (via reducer), sets investigation_plan, pending_tool_calls, updates current_phase to "ACT"</p>
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-num">3</div>
+                    <div class="flow-content">
+                        <h4>ACT Updates State</h4>
+                        <p>Adds tool_results[], raw_evidence{}, execution_metadata, clears pending_tool_calls, updates current_phase to "OBSERVE"</p>
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-num">4</div>
+                    <div class="flow-content">
+                        <h4>OBSERVE Updates State</h4>
+                        <p>Adds observations[] (via reducer), correlations[], updates hypotheses with new confidence, identifies gaps, updates current_phase to "EVALUATE"</p>
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-num">5</div>
+                    <div class="flow-content">
+                        <h4>EVALUATE Makes Decision</h4>
+                        <p>Sets decision (continue/complete/escalate), current_confidence, finding (if complete), requires_human_approval, increments iteration_count</p>
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-num">6</div>
+                    <div class="flow-content">
+                        <h4>Router Directs Flow</h4>
+                        <p>Routes to: THINK (loop continues with accumulated state), END (graph completes with finding), or HUMAN_GATE (interrupts for approval)</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Navigation Footer -->
+        <div class="nav-footer">
+            <a href="haci_langsmith_4_observability.html" class="nav-btn">
+                <span>←</span>
+                <div>
+                    <div class="nav-btn-label">Previous</div>
+                    <div class="nav-btn-title">Observability</div>
+                </div>
+            </a>
+            <a href="haci_langsmith_6_swarm.html" class="nav-btn">
+                <div>
+                    <div class="nav-btn-label">Next</div>
+                    <div class="nav-btn-title">Multi-Agent Swarm</div>
+                </div>
+                <span>→</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p><strong>HACI on LangSmith</strong> — Harness-Enhanced Agentic Collaborative Intelligence</p>
+        <p style="margin-top: 0.5rem;">Page 5 of 10 • Harness Phases Deep Dive</p>
+    </footer>
+</body>
+</html>

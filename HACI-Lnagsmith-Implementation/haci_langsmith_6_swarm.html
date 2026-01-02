@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HACI on LangSmith - Multi-Agent Swarm Coordination</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #7c3aed;
+            --success: #059669;
+            --warning: #d97706;
+            --danger: #dc2626;
+            --info: #0891b2;
+            --langchain-green: #10b981;
+            --swarm-purple: #a855f7;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: var(--gray-800);
+            background: var(--gray-50);
+        }
+
+        .nav {
+            position: sticky;
+            top: 0;
+            background: white;
+            border-bottom: 1px solid var(--gray-200);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .nav-brand { font-weight: 700; font-size: 1.25rem; color: var(--gray-900); }
+        .nav-brand span { color: var(--swarm-purple); }
+
+        .nav-links { display: flex; gap: 0.5rem; align-items: center; }
+        .nav-links a {
+            color: var(--gray-600);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+        .nav-links a:hover { background: var(--gray-100); color: var(--gray-900); }
+        .nav-links a.active {
+            background: linear-gradient(135deg, var(--swarm-purple), var(--primary));
+            color: white;
+        }
+        .page-indicator {
+            background: var(--gray-100);
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            color: var(--gray-600);
+        }
+
+        .hero {
+            background: linear-gradient(135deg, var(--swarm-purple), var(--primary), var(--langchain-green));
+            color: white;
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+        .hero h1 { font-size: 2.5rem; margin-bottom: 1rem; font-weight: 800; }
+        .hero p { font-size: 1.25rem; opacity: 0.95; max-width: 700px; margin: 0 auto; }
+
+        .stats-bar {
+            background: white;
+            border-bottom: 1px solid var(--gray-200);
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: center;
+            gap: 4rem;
+            flex-wrap: wrap;
+        }
+        .stat { text-align: center; }
+        .stat-value { font-size: 1.75rem; font-weight: 700; color: var(--swarm-purple); }
+        .stat-label { font-size: 0.875rem; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.05em; }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 3rem 2rem; }
+        .section { margin-bottom: 4rem; }
+        .section-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 3px solid var(--gray-200);
+            position: relative;
+            text-align: center;
+        }
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -3px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 3px;
+            background: linear-gradient(90deg, var(--swarm-purple), var(--primary));
+        }
+
+        .swarm-diagram {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            margin: 2rem 0;
+            border: 1px solid var(--gray-200);
+        }
+
+        .swarm-flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin: 1.5rem 0;
+        }
+
+        .swarm-node {
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            text-align: center;
+            min-width: 120px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .swarm-node.start { background: var(--gray-700); }
+        .swarm-node.log { background: #3b82f6; }
+        .swarm-node.code { background: #22c55e; }
+        .swarm-node.infra { background: #f59e0b; }
+        .swarm-node.db { background: #ec4899; }
+        .swarm-node.security { background: #ef4444; }
+        .swarm-node.coordinator { background: linear-gradient(135deg, var(--swarm-purple), var(--primary)); }
+        .swarm-node.end { background: var(--gray-700); }
+
+        .swarm-node small { display: block; font-weight: 400; font-size: 0.75rem; opacity: 0.9; }
+        .swarm-arrow { font-size: 1.5rem; color: var(--gray-400); }
+
+        .parallel-box {
+            border: 2px dashed var(--swarm-purple);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            position: relative;
+        }
+        .parallel-box::before {
+            content: 'PARALLEL';
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--swarm-purple);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .agent-card {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            border: 1px solid var(--gray-200);
+        }
+        .agent-card-header {
+            padding: 1.25rem 1.5rem;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .agent-card-header.log { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+        .agent-card-header.code { background: linear-gradient(135deg, #22c55e, #16a34a); }
+        .agent-card-header.infra { background: linear-gradient(135deg, #f59e0b, #ea580c); }
+        .agent-card-header.db { background: linear-gradient(135deg, #ec4899, #db2777); }
+        .agent-card-header.security { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        .agent-card-header.coordinator { background: linear-gradient(135deg, var(--swarm-purple), var(--primary)); }
+
+        .agent-icon {
+            width: 40px;
+            height: 40px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+        .agent-card-header h3 { font-size: 1.25rem; }
+        .agent-card-body { padding: 1.5rem; }
+
+        .code-block {
+            background: #1e1e1e;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 1.5rem 0;
+        }
+        .code-header {
+            background: #2d2d2d;
+            padding: 0.75rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #404040;
+        }
+        .code-filename { color: #9ca3af; font-size: 0.875rem; font-family: 'Fira Code', monospace; }
+        .code-lang { color: #10b981; font-size: 0.75rem; padding: 0.25rem 0.5rem; background: rgba(16,185,129,0.1); border-radius: 4px; }
+        .code-content { padding: 1.5rem; overflow-x: auto; }
+        pre { margin: 0; font-family: 'Fira Code', monospace; font-size: 0.875rem; line-height: 1.6; color: #e5e7eb; }
+        .keyword { color: #c586c0; }
+        .string { color: #ce9178; }
+        .function { color: #dcdcaa; }
+        .class { color: #4ec9b0; }
+        .comment { color: #6a9955; }
+        .decorator { color: #d7ba7d; }
+        .number { color: #b5cea8; }
+
+        .callout {
+            padding: 1.25rem 1.5rem;
+            border-radius: 12px;
+            margin: 1.5rem 0;
+            display: flex;
+            gap: 1rem;
+        }
+        .callout-icon { font-size: 1.5rem; flex-shrink: 0; }
+        .callout.info { background: linear-gradient(135deg, rgba(8,145,178,0.1), rgba(6,182,212,0.05)); border-left: 4px solid var(--info); }
+        .callout.success { background: linear-gradient(135deg, rgba(5,150,105,0.1), rgba(16,185,129,0.05)); border-left: 4px solid var(--success); }
+        .callout.warning { background: linear-gradient(135deg, rgba(217,119,6,0.1), rgba(245,158,11,0.05)); border-left: 4px solid var(--warning); }
+        .callout.tip { background: linear-gradient(135deg, rgba(168,85,247,0.1), rgba(167,139,250,0.05)); border-left: 4px solid var(--swarm-purple); }
+        .callout h4 { font-weight: 600; margin-bottom: 0.5rem; color: var(--gray-800); }
+        .callout p { color: var(--gray-700); font-size: 0.9375rem; }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .feature-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--gray-200);
+        }
+        .feature-card h4 {
+            color: var(--swarm-purple);
+            font-size: 1.125rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .feature-card p { color: var(--gray-600); font-size: 0.9375rem; }
+
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        th, td { padding: 1rem 1.25rem; text-align: left; border-bottom: 1px solid var(--gray-200); }
+        th { background: var(--gray-100); font-weight: 600; color: var(--gray-700); font-size: 0.875rem; text-transform: uppercase; }
+        td { color: var(--gray-700); font-size: 0.9375rem; }
+        tr:last-child td { border-bottom: none; }
+
+        .nav-footer {
+            display: flex;
+            justify-content: space-between;
+            padding: 2rem 0;
+            margin-top: 2rem;
+            border-top: 1px solid var(--gray-200);
+        }
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 1.5rem;
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--gray-700);
+            transition: all 0.2s;
+        }
+        .nav-btn:hover { border-color: var(--primary); color: var(--primary); box-shadow: 0 4px 12px rgba(37,99,235,0.15); }
+        .nav-btn-label { font-size: 0.75rem; color: var(--gray-500); text-transform: uppercase; }
+        .nav-btn-title { font-weight: 600; }
+
+        footer {
+            background: var(--gray-900);
+            color: var(--gray-400);
+            padding: 2rem;
+            text-align: center;
+            font-size: 0.875rem;
+        }
+        footer strong { color: white; }
+
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2rem; }
+            .stats-bar { gap: 2rem; }
+            .nav-links { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-brand">HACI <span>LangSmith</span></div>
+        <div class="nav-links">
+            <a href="haci_langsmith_1_setup.html">Setup</a>
+            <a href="haci_langsmith_2_graph.html">Graph</a>
+            <a href="haci_langsmith_3_agents.html">Agents</a>
+            <a href="haci_langsmith_4_observability.html">Observability</a>
+            <a href="haci_langsmith_5_harness_phases.html">Phases</a>
+            <a href="haci_langsmith_6_swarm.html" class="active">Swarm</a>
+            <a href="haci_langsmith_7_context.html">Context</a>
+            <a href="haci_langsmith_8_hitl.html">HITL</a>
+            <a href="haci_langsmith_9_testing.html">Testing</a>
+            <a href="haci_langsmith_10_deployment.html">Deploy</a>
+            <span class="page-indicator">6 of 10</span>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <h1>🐝 Multi-Agent Swarm Coordination</h1>
+        <p>Orchestrate specialized agents in parallel, synthesize findings, resolve conflicts, and achieve emergent problem-solving capabilities</p>
+    </section>
+
+    <div class="stats-bar">
+        <div class="stat">
+            <div class="stat-value">5</div>
+            <div class="stat-label">Specialized Agents</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">||</div>
+            <div class="stat-label">Parallel Execution</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">1</div>
+            <div class="stat-label">Coordinator</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">∞</div>
+            <div class="stat-label">Emergent Intelligence</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <section class="section">
+            <h2 class="section-title">Swarm Architecture</h2>
+            
+            <div class="swarm-diagram">
+                <div class="swarm-flow">
+                    <div class="swarm-node start">📋 START<small>Ticket Input</small></div>
+                    <div class="swarm-arrow">→</div>
+                    <div class="parallel-box">
+                        <div class="swarm-node log">📊 Log Agent</div>
+                        <div class="swarm-node code">💻 Code Agent</div>
+                        <div class="swarm-node infra">🏗️ Infra Agent</div>
+                        <div class="swarm-node db">🗄️ DB Agent</div>
+                        <div class="swarm-node security">🔐 Security Agent</div>
+                    </div>
+                    <div class="swarm-arrow">→</div>
+                    <div class="swarm-node coordinator">🎯 Coordinator<small>Synthesize</small></div>
+                    <div class="swarm-arrow">→</div>
+                    <div class="swarm-node end">✅ END<small>Root Cause</small></div>
+                </div>
+            </div>
+
+            <div class="callout info">
+                <div class="callout-icon">💡</div>
+                <div>
+                    <h4>Automatic Parallelization</h4>
+                    <p>LangGraph automatically executes nodes in parallel when they share the same predecessor. All 5 agents run concurrently, then converge at the coordinator node.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2 class="section-title">Swarm State Definition</h2>
+            
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-filename">src/state/swarm_state.py</span>
+                    <span class="code-lang">Python</span>
+                </div>
+                <div class="code-content">
+<pre><span class="keyword">from</span> typing <span class="keyword">import</span> TypedDict, Annotated, List, Optional
+<span class="keyword">import</span> operator
+
+<span class="keyword">class</span> <span class="class">AgentFinding</span>(BaseModel):
+    <span class="string">"""Finding from a specialized agent."""</span>
+    agent_id: <span class="class">str</span>
+    domain: <span class="class">str</span>  <span class="comment"># log_analysis, code, infrastructure, database, security</span>
+    root_cause_hypothesis: <span class="class">str</span>
+    confidence: <span class="class">float</span>
+    supporting_evidence: List[<span class="class">str</span>]
+    recommended_actions: List[<span class="class">str</span>]
+    execution_time_ms: <span class="class">int</span>
+
+<span class="keyword">class</span> <span class="class">SwarmState</span>(TypedDict):
+    <span class="string">"""State for multi-agent swarm execution."""</span>
+    
+    <span class="comment"># Input</span>
+    ticket_id: <span class="class">str</span>
+    ticket_description: <span class="class">str</span>
+    ticket_severity: <span class="class">str</span>
+    customer_context: <span class="class">dict</span>
+    
+    <span class="comment"># Parallel agent findings (accumulated via reducer)</span>
+    agent_findings: Annotated[List[<span class="class">AgentFinding</span>], operator.add]
+    
+    <span class="comment"># Coordinator synthesis</span>
+    synthesized_root_cause: Optional[<span class="class">str</span>]
+    conflicts: List[<span class="class">dict</span>]  <span class="comment"># Disagreements between agents</span>
+    conflict_resolution: Optional[<span class="class">str</span>]
+    
+    <span class="comment"># Final output</span>
+    final_confidence: <span class="class">float</span>
+    final_recommendation: <span class="class">str</span>
+    affected_domains: List[<span class="class">str</span>]
+    
+    <span class="comment"># Execution metadata</span>
+    total_execution_time_ms: <span class="class">int</span>
+    agents_completed: <span class="class">int</span>
+    agents_failed: <span class="class">int</span></pre>
+                </div>
+            </div>
+
+            <div class="callout tip">
+                <div class="callout-icon">💜</div>
+                <div>
+                    <h4>Annotated Reducer Pattern</h4>
+                    <p><code>Annotated[List[AgentFinding], operator.add]</code> tells LangGraph to append new findings to the list. Each agent's output accumulates, preserving all findings for the coordinator.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2 class="section-title">Swarm Graph Implementation</h2>
+            
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-filename">src/graphs/swarm_graph.py</span>
+                    <span class="code-lang">Python</span>
+                </div>
+                <div class="code-content">
+<pre><span class="keyword">from</span> langgraph.graph <span class="keyword">import</span> StateGraph, START, END
+<span class="keyword">from</span> langsmith <span class="keyword">import</span> traceable
+
+<span class="decorator">@traceable</span>(name=<span class="string">"log_agent_node"</span>)
+<span class="keyword">async def</span> <span class="function">log_agent_node</span>(state: <span class="class">SwarmState</span>) -> <span class="class">dict</span>:
+    <span class="string">"""Log Analysis Agent - runs its own harness cycle."""</span>
+    agent = <span class="class">LogAnalysisAgent</span>()
+    harness_graph = <span class="function">compile_harness_graph</span>(agent)
+    
+    <span class="comment"># Run full harness cycle for this domain</span>
+    result = <span class="keyword">await</span> harness_graph.ainvoke({
+        <span class="string">"ticket_id"</span>: state[<span class="string">"ticket_id"</span>],
+        <span class="string">"ticket_description"</span>: state[<span class="string">"ticket_description"</span>],
+        <span class="string">"ticket_severity"</span>: state[<span class="string">"ticket_severity"</span>],
+        <span class="string">"execution_mode"</span>: <span class="string">"single_agent"</span>
+    })
+    
+    finding = <span class="class">AgentFinding</span>(
+        agent_id=<span class="string">"log_analysis"</span>,
+        domain=<span class="string">"log_analysis"</span>,
+        root_cause_hypothesis=result.get(<span class="string">"finding"</span>, {}).get(<span class="string">"root_cause"</span>, <span class="string">"No finding"</span>),
+        confidence=result.get(<span class="string">"current_confidence"</span>, <span class="number">0.0</span>),
+        supporting_evidence=result.get(<span class="string">"observations"</span>, [])[:5],
+        recommended_actions=result.get(<span class="string">"finding"</span>, {}).get(<span class="string">"recommended_actions"</span>, []),
+        execution_time_ms=result.get(<span class="string">"execution_time_ms"</span>, <span class="number">0</span>)
+    )
+    
+    <span class="keyword">return</span> {<span class="string">"agent_findings"</span>: [finding]}
+
+<span class="decorator">@traceable</span>(name=<span class="string">"code_agent_node"</span>)
+<span class="keyword">async def</span> <span class="function">code_agent_node</span>(state: <span class="class">SwarmState</span>) -> <span class="class">dict</span>:
+    <span class="string">"""Code Analysis Agent."""</span>
+    agent = <span class="class">CodeAnalysisAgent</span>()
+    harness_graph = <span class="function">compile_harness_graph</span>(agent)
+    result = <span class="keyword">await</span> harness_graph.ainvoke({...})
+    <span class="keyword">return</span> {<span class="string">"agent_findings"</span>: [<span class="function">create_finding</span>(<span class="string">"code_analysis"</span>, result)]}
+
+<span class="decorator">@traceable</span>(name=<span class="string">"infra_agent_node"</span>)
+<span class="keyword">async def</span> <span class="function">infra_agent_node</span>(state: <span class="class">SwarmState</span>) -> <span class="class">dict</span>:
+    <span class="string">"""Infrastructure Agent."""</span>
+    agent = <span class="class">InfrastructureAgent</span>()
+    harness_graph = <span class="function">compile_harness_graph</span>(agent)
+    result = <span class="keyword">await</span> harness_graph.ainvoke({...})
+    <span class="keyword">return</span> {<span class="string">"agent_findings"</span>: [<span class="function">create_finding</span>(<span class="string">"infrastructure"</span>, result)]}
+
+<span class="decorator">@traceable</span>(name=<span class="string">"db_agent_node"</span>)
+<span class="keyword">async def</span> <span class="function">db_agent_node</span>(state: <span class="class">SwarmState</span>) -> <span class="class">dict</span>:
+    <span class="string">"""Database Agent."""</span>
+    agent = <span class="class">DatabaseAgent</span>()
+    harness_graph = <span class="function">compile_harness_graph</span>(agent)
+    result = <span class="keyword">await</span> harness_graph.ainvoke({...})
+    <span class="keyword">return</span> {<span class="string">"agent_findings"</span>: [<span class="function">create_finding</span>(<span class="string">"database"</span>, result)]}
+
+<span class="decorator">@traceable</span>(name=<span class="string">"security_agent_node"</span>)
+<span class="keyword">async def</span> <span class="function">security_agent_node</span>(state: <span class="class">SwarmState</span>) -> <span class="class">dict</span>:
+    <span class="string">"""Security Agent."""</span>
+    agent = <span class="class">SecurityAgent</span>()
+    harness_graph = <span class="function">compile_harness_graph</span>(agent)
+    result = <span class="keyword">await</span> harness_graph.ainvoke({...})
+    <span class="keyword">return</span> {<span class="string">"agent_findings"</span>: [<span class="function">create_finding</span>(<span class="string">"security"</span>, result)]}
+
+<span class="decorator">@traceable</span>(name=<span class="string">"coordinator_node"</span>)
+<span class="keyword">async def</span> <span class="function">coordinator_node</span>(state: <span class="class">SwarmState</span>) -> <span class="class">dict</span>:
+    <span class="string">"""Swarm Coordinator - synthesizes all agent findings."""</span>
+    findings = state[<span class="string">"agent_findings"</span>]
+    
+    <span class="comment"># Detect conflicts</span>
+    conflicts = <span class="function">detect_conflicts</span>(findings)
+    
+    <span class="comment"># Synthesize root cause</span>
+    synthesis = <span class="keyword">await</span> <span class="function">synthesize_findings</span>(findings, conflicts)
+    
+    <span class="keyword">return</span> {
+        <span class="string">"synthesized_root_cause"</span>: synthesis.root_cause,
+        <span class="string">"conflicts"</span>: conflicts,
+        <span class="string">"conflict_resolution"</span>: synthesis.resolution,
+        <span class="string">"final_confidence"</span>: synthesis.confidence,
+        <span class="string">"final_recommendation"</span>: synthesis.recommendation,
+        <span class="string">"affected_domains"</span>: [f.domain <span class="keyword">for</span> f <span class="keyword">in</span> findings <span class="keyword">if</span> f.confidence > <span class="number">0.5</span>]
+    }
+
+<span class="keyword">def</span> <span class="function">build_swarm_graph</span>() -> <span class="class">StateGraph</span>:
+    <span class="string">"""Build the swarm graph with parallel execution."""</span>
+    graph = <span class="class">StateGraph</span>(<span class="class">SwarmState</span>)
+    
+    <span class="comment"># Add all agent nodes</span>
+    graph.add_node(<span class="string">"log_agent"</span>, log_agent_node)
+    graph.add_node(<span class="string">"code_agent"</span>, code_agent_node)
+    graph.add_node(<span class="string">"infra_agent"</span>, infra_agent_node)
+    graph.add_node(<span class="string">"db_agent"</span>, db_agent_node)
+    graph.add_node(<span class="string">"security_agent"</span>, security_agent_node)
+    graph.add_node(<span class="string">"coordinator"</span>, coordinator_node)
+    
+    <span class="comment"># All agents start from START (parallel execution)</span>
+    graph.add_edge(START, <span class="string">"log_agent"</span>)
+    graph.add_edge(START, <span class="string">"code_agent"</span>)
+    graph.add_edge(START, <span class="string">"infra_agent"</span>)
+    graph.add_edge(START, <span class="string">"db_agent"</span>)
+    graph.add_edge(START, <span class="string">"security_agent"</span>)
+    
+    <span class="comment"># All agents converge at coordinator</span>
+    graph.add_edge(<span class="string">"log_agent"</span>, <span class="string">"coordinator"</span>)
+    graph.add_edge(<span class="string">"code_agent"</span>, <span class="string">"coordinator"</span>)
+    graph.add_edge(<span class="string">"infra_agent"</span>, <span class="string">"coordinator"</span>)
+    graph.add_edge(<span class="string">"db_agent"</span>, <span class="string">"coordinator"</span>)
+    graph.add_edge(<span class="string">"security_agent"</span>, <span class="string">"coordinator"</span>)
+    
+    <span class="comment"># Coordinator ends the graph</span>
+    graph.add_edge(<span class="string">"coordinator"</span>, END)
+    
+    <span class="keyword">return</span> graph</pre>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2 class="section-title">Coordinator: Synthesis & Conflict Resolution</h2>
+            
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-filename">src/coordination/synthesizer.py</span>
+                    <span class="code-lang">Python</span>
+                </div>
+                <div class="code-content">
+<pre><span class="keyword">class</span> <span class="class">SynthesisOutput</span>(BaseModel):
+    <span class="string">"""Coordinator synthesis result."""</span>
+    root_cause: <span class="class">str</span>
+    confidence: <span class="class">float</span>
+    recommendation: <span class="class">str</span>
+    resolution: Optional[<span class="class">str</span>]
+    evidence_summary: <span class="class">str</span>
+
+<span class="decorator">@traceable</span>(name=<span class="string">"synthesize_findings"</span>)
+<span class="keyword">async def</span> <span class="function">synthesize_findings</span>(
+    findings: List[<span class="class">AgentFinding</span>],
+    conflicts: List[<span class="class">dict</span>]
+) -> <span class="class">SynthesisOutput</span>:
+    <span class="string">"""Synthesize findings from all agents into unified root cause."""</span>
+    
+    system_prompt = <span class="string">"""You are the Swarm Coordinator, synthesizing findings from multiple specialized agents.
+
+Your responsibilities:
+1. Identify the most likely root cause by weighing evidence from all domains
+2. Resolve conflicts between agents with different hypotheses
+3. Calculate aggregate confidence based on agreement and evidence quality
+4. Produce actionable recommendations that address the true root cause
+
+When resolving conflicts:
+- Consider temporal correlations (what happened first?)
+- Weight infrastructure/code issues higher for cascading failures
+- Security findings should be prioritized if they explain other symptoms
+- Database issues often manifest as application-level symptoms
+
+Output structured JSON with your synthesis."""</span>
+    
+    <span class="comment"># Format findings for LLM</span>
+    findings_text = <span class="function">format_agent_findings</span>(findings)
+    conflicts_text = <span class="function">format_conflicts</span>(conflicts)
+    
+    user_prompt = <span class="string">f"""## Agent Findings
+
+</span>{findings_text}<span class="string">
+
+## Detected Conflicts
+
+</span>{conflicts_text}<span class="string">
+
+Synthesize these findings into a unified root cause analysis."""</span>
+    
+    llm = <span class="class">ChatAnthropic</span>(model=<span class="string">"claude-sonnet-4-20250514"</span>)
+    structured_llm = llm.with_structured_output(<span class="class">SynthesisOutput</span>)
+    
+    result = <span class="keyword">await</span> structured_llm.ainvoke([
+        <span class="class">SystemMessage</span>(content=system_prompt),
+        <span class="class">HumanMessage</span>(content=user_prompt)
+    ])
+    
+    <span class="keyword">return</span> result
+
+<span class="keyword">def</span> <span class="function">detect_conflicts</span>(findings: List[<span class="class">AgentFinding</span>]) -> List[<span class="class">dict</span>]:
+    <span class="string">"""Detect disagreements between agent findings."""</span>
+    conflicts = []
+    
+    <span class="comment"># Compare each pair of findings</span>
+    <span class="keyword">for</span> i, f1 <span class="keyword">in</span> <span class="function">enumerate</span>(findings):
+        <span class="keyword">for</span> f2 <span class="keyword">in</span> findings[i+<span class="number">1</span>:]:
+            <span class="comment"># Check if hypotheses contradict</span>
+            contradiction_score = <span class="function">calculate_contradiction</span>(
+                f1.root_cause_hypothesis,
+                f2.root_cause_hypothesis
+            )
+            
+            <span class="keyword">if</span> contradiction_score > <span class="number">0.7</span>:
+                conflicts.append({
+                    <span class="string">"agents"</span>: [f1.agent_id, f2.agent_id],
+                    <span class="string">"hypothesis_1"</span>: f1.root_cause_hypothesis,
+                    <span class="string">"hypothesis_2"</span>: f2.root_cause_hypothesis,
+                    <span class="string">"confidence_1"</span>: f1.confidence,
+                    <span class="string">"confidence_2"</span>: f2.confidence,
+                    <span class="string">"contradiction_score"</span>: contradiction_score
+                })
+    
+    <span class="keyword">return</span> conflicts
+
+<span class="keyword">def</span> <span class="function">calculate_aggregate_confidence</span>(
+    findings: List[<span class="class">AgentFinding</span>],
+    conflicts: List[<span class="class">dict</span>]
+) -> <span class="class">float</span>:
+    <span class="string">"""Calculate weighted confidence considering agreement."""</span>
+    <span class="keyword">if not</span> findings:
+        <span class="keyword">return</span> <span class="number">0.0</span>
+    
+    <span class="comment"># Weight by domain expertise relevance</span>
+    domain_weights = {
+        <span class="string">"log_analysis"</span>: <span class="number">1.0</span>,
+        <span class="string">"code_analysis"</span>: <span class="number">1.2</span>,
+        <span class="string">"infrastructure"</span>: <span class="number">1.1</span>,
+        <span class="string">"database"</span>: <span class="number">1.0</span>,
+        <span class="string">"security"</span>: <span class="number">1.3</span>  <span class="comment"># Security issues often root causes</span>
+    }
+    
+    total_weight = <span class="number">0</span>
+    weighted_confidence = <span class="number">0</span>
+    
+    <span class="keyword">for</span> f <span class="keyword">in</span> findings:
+        weight = domain_weights.get(f.domain, <span class="number">1.0</span>)
+        weighted_confidence += f.confidence * weight
+        total_weight += weight
+    
+    base_confidence = weighted_confidence / total_weight
+    
+    <span class="comment"># Penalize for conflicts</span>
+    conflict_penalty = <span class="function">len</span>(conflicts) * <span class="number">0.1</span>
+    
+    <span class="keyword">return</span> <span class="function">max</span>(<span class="number">0.0</span>, base_confidence - conflict_penalty)</pre>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2 class="section-title">Swarm Execution Modes</h2>
+            
+            <div class="cards-grid">
+                <div class="feature-card">
+                    <h4>🔵 Micro-Swarm (2-3 agents)</h4>
+                    <p>Quick investigations using 2-3 most relevant agents based on ticket classification. Lower latency, good for common issues.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>🟣 Full Swarm (all agents)</h4>
+                    <p>Comprehensive investigation with all specialized agents. Higher latency but maximum coverage for complex issues.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>🟠 Adaptive Swarm</h4>
+                    <p>Starts with micro-swarm, dynamically adds agents if initial investigation identifies cross-domain concerns.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>🟢 Focused Swarm</h4>
+                    <p>Single primary agent with supporting agents. Primary runs full harness, others provide targeted context.</p>
+                </div>
+            </div>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-filename">src/graphs/adaptive_swarm.py</span>
+                    <span class="code-lang">Python</span>
+                </div>
+                <div class="code-content">
+<pre><span class="keyword">def</span> <span class="function">select_agents_for_ticket</span>(
+    ticket_description: <span class="class">str</span>,
+    ticket_severity: <span class="class">str</span>,
+    swarm_mode: <span class="class">str</span>
+) -> List[<span class="class">str</span>]:
+    <span class="string">"""Select which agents to include based on ticket analysis."""</span>
+    
+    <span class="keyword">if</span> swarm_mode == <span class="string">"full"</span>:
+        <span class="keyword">return</span> [<span class="string">"log"</span>, <span class="string">"code"</span>, <span class="string">"infra"</span>, <span class="string">"db"</span>, <span class="string">"security"</span>]
+    
+    <span class="comment"># Classify ticket to determine relevant domains</span>
+    domains = <span class="function">classify_ticket_domains</span>(ticket_description)
+    
+    <span class="keyword">if</span> swarm_mode == <span class="string">"micro"</span>:
+        <span class="comment"># Select top 2-3 most relevant</span>
+        <span class="keyword">return</span> domains[:3]
+    
+    <span class="keyword">if</span> swarm_mode == <span class="string">"adaptive"</span>:
+        <span class="comment"># Start with primary domain, expand as needed</span>
+        <span class="keyword">return</span> domains[:1]  <span class="comment"># Initial; expand_swarm() adds more</span>
+    
+    <span class="keyword">return</span> domains
+
+<span class="keyword">async def</span> <span class="function">expand_swarm</span>(
+    state: <span class="class">SwarmState</span>,
+    current_findings: List[<span class="class">AgentFinding</span>]
+) -> List[<span class="class">str</span>]:
+    <span class="string">"""Dynamically expand swarm based on initial findings."""</span>
+    
+    <span class="comment"># Check if cross-domain issues detected</span>
+    cross_domain_signals = <span class="function">detect_cross_domain_signals</span>(current_findings)
+    
+    new_agents = []
+    <span class="keyword">for</span> signal <span class="keyword">in</span> cross_domain_signals:
+        <span class="keyword">if</span> signal[<span class="string">"domain"</span>] <span class="keyword">not in</span> state.get(<span class="string">"active_agents"</span>, []):
+            new_agents.append(signal[<span class="string">"domain"</span>])
+    
+    <span class="keyword">return</span> new_agents</pre>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2 class="section-title">Performance Optimization</h2>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>Strategy</th>
+                        <th>Implementation</th>
+                        <th>Impact</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Agent Timeouts</td>
+                        <td>Per-agent timeout with graceful degradation</td>
+                        <td>Prevents slow agents from blocking synthesis</td>
+                    </tr>
+                    <tr>
+                        <td>Early Termination</td>
+                        <td>High-confidence finding from one agent can trigger early stop</td>
+                        <td>Reduces latency for obvious issues</td>
+                    </tr>
+                    <tr>
+                        <td>Tool Result Caching</td>
+                        <td>Redis cache for common tool outputs (logs, metrics)</td>
+                        <td>Agents share cached data, reducing API calls</td>
+                    </tr>
+                    <tr>
+                        <td>Streaming Updates</td>
+                        <td>Stream agent progress to coordinator in real-time</td>
+                        <td>Coordinator can begin analysis before all complete</td>
+                    </tr>
+                    <tr>
+                        <td>Priority Scheduling</td>
+                        <td>High-severity tickets get resource priority</td>
+                        <td>P1 issues processed faster in shared environments</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="callout warning">
+                <div class="callout-icon">⚠️</div>
+                <div>
+                    <h4>Cost Consideration</h4>
+                    <p>Full swarm execution costs 5x a single agent. Use micro-swarm for routine tickets, full swarm for P1/P2 severity or when initial investigation is inconclusive.</p>
+                </div>
+            </div>
+        </section>
+
+        <div class="nav-footer">
+            <a href="haci_langsmith_5_harness_phases.html" class="nav-btn">
+                <span>←</span>
+                <div>
+                    <div class="nav-btn-label">Previous</div>
+                    <div class="nav-btn-title">Harness Phases</div>
+                </div>
+            </a>
+            <a href="haci_langsmith_7_context.html" class="nav-btn">
+                <div>
+                    <div class="nav-btn-label">Next</div>
+                    <div class="nav-btn-title">Context Engineering</div>
+                </div>
+                <span>→</span>
+            </a>
+        </div>
+    </div>
+
+    <footer>
+        <p><strong>HACI on LangSmith</strong> — Harness-Enhanced Agentic Collaborative Intelligence</p>
+        <p style="margin-top: 0.5rem;">Page 6 of 10 • Multi-Agent Swarm Coordination</p>
+    </footer>
+</body>
+</html>

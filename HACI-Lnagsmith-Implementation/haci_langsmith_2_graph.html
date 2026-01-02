@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HACI on LangSmith - Graph Architecture</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --purple-color: #9b59b6;
+            --teal-color: #1abc9c;
+            --langchain-green: #00A67E;
+            --light-bg: #ecf0f1;
+            --white: #ffffff;
+            --text-color: #2c3e50;
+            --text-light: #7f8c8d;
+            --border-color: #bdc3c7;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background: var(--white);
+        }
+
+        .nav {
+            position: sticky;
+            top: 0;
+            background: var(--primary-color);
+            padding: 1rem 2rem;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .nav-brand {
+            color: var(--white);
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .nav-brand span { color: var(--langchain-green); }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover, .nav-links a.active { color: var(--white); }
+
+        .page-indicator {
+            background: var(--langchain-green);
+            color: var(--white);
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+
+        .hero {
+            background: linear-gradient(135deg, var(--secondary-color) 0%, var(--primary-color) 50%, var(--langchain-green) 100%);
+            color: var(--white);
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+
+        .hero h1 {
+            font-size: 2.8rem;
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+
+        .hero .subtitle {
+            font-size: 1.3rem;
+            opacity: 0.95;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .stats-bar {
+            background: var(--primary-color);
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: center;
+            gap: 4rem;
+            flex-wrap: wrap;
+        }
+
+        .stat-item { text-align: center; color: var(--white); }
+        .stat-value { font-size: 2rem; font-weight: 700; color: var(--langchain-green); }
+        .stat-label { font-size: 0.85rem; opacity: 0.8; text-transform: uppercase; letter-spacing: 1px; }
+
+        .main-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+
+        .section { margin-bottom: 4rem; }
+
+        .section-title {
+            font-size: 2rem;
+            color: var(--primary-color);
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            position: relative;
+            text-align: center;
+        }
+
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 3px;
+            background: linear-gradient(90deg, var(--langchain-green), var(--secondary-color));
+            border-radius: 2px;
+        }
+
+        .section-intro {
+            text-align: center;
+            max-width: 800px;
+            margin: 0 auto 2rem;
+            color: var(--text-light);
+            font-size: 1.1rem;
+        }
+
+        .code-block {
+            background: #1e1e1e;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            overflow-x: auto;
+        }
+
+        .code-block pre {
+            margin: 0;
+            color: #d4d4d4;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .code-block .keyword { color: #569cd6; }
+        .code-block .string { color: #ce9178; }
+        .code-block .comment { color: #6a9955; }
+        .code-block .function { color: #dcdcaa; }
+        .code-block .class { color: #4ec9b0; }
+        .code-block .number { color: #b5cea8; }
+        .code-block .decorator { color: #d7ba7d; }
+        .code-block .type { color: #4ec9b0; }
+
+        .code-header {
+            background: #2d2d2d;
+            color: #ccc;
+            padding: 0.5rem 1rem;
+            border-radius: 10px 10px 0 0;
+            font-size: 0.85rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .code-header + .code-block {
+            border-radius: 0 0 10px 10px;
+            margin-top: 0;
+        }
+
+        .callout {
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin: 1.5rem 0;
+            border-left: 4px solid;
+        }
+
+        .callout.info { background: #e8f4fd; border-color: var(--secondary-color); }
+        .callout.success { background: #e8f8f5; border-color: var(--langchain-green); }
+        .callout.warning { background: #fdf2e9; border-color: var(--warning-color); }
+
+        .callout-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .callout.info .callout-title { color: var(--secondary-color); }
+        .callout.success .callout-title { color: var(--langchain-green); }
+        .callout.warning .callout-title { color: var(--warning-color); }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .card {
+            background: var(--white);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.08);
+            transition: transform 0.3s, box-shadow 0.3s;
+            border: 1px solid var(--border-color);
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+        }
+
+        .card-header {
+            padding: 1.2rem 1.5rem;
+            color: var(--white);
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .card-header.green { background: linear-gradient(135deg, var(--langchain-green), #00875A); }
+        .card-header.blue { background: linear-gradient(135deg, var(--secondary-color), #2980b9); }
+        .card-header.purple { background: linear-gradient(135deg, var(--purple-color), #8e44ad); }
+        .card-header.teal { background: linear-gradient(135deg, var(--teal-color), #16a085); }
+        .card-header.orange { background: linear-gradient(135deg, var(--warning-color), #e67e22); }
+
+        .card-body { padding: 1.5rem; }
+        .card-body p { margin-bottom: 1rem; color: var(--text-light); }
+        .card-body ul { padding-left: 1.2rem; }
+        .card-body li { margin-bottom: 0.5rem; color: var(--text-color); }
+
+        .phase-flow {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin: 2rem 0;
+        }
+
+        .phase-box {
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            color: var(--white);
+            font-weight: 600;
+            text-align: center;
+            min-width: 120px;
+        }
+
+        .phase-box.think { background: var(--secondary-color); }
+        .phase-box.act { background: var(--success-color); }
+        .phase-box.observe { background: var(--warning-color); }
+        .phase-box.evaluate { background: var(--purple-color); }
+        .phase-box.router { background: var(--teal-color); }
+
+        .phase-arrow {
+            font-size: 1.5rem;
+            color: var(--text-light);
+        }
+
+        .nav-footer {
+            display: flex;
+            justify-content: space-between;
+            padding: 2rem 0;
+            border-top: 1px solid var(--border-color);
+            margin-top: 3rem;
+        }
+
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 1.5rem;
+            background: var(--light-bg);
+            border-radius: 8px;
+            text-decoration: none;
+            color: var(--primary-color);
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .nav-btn:hover {
+            background: var(--langchain-green);
+            color: var(--white);
+        }
+
+        .footer {
+            background: var(--primary-color);
+            color: var(--white);
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .footer-stats {
+            display: flex;
+            justify-content: center;
+            gap: 3rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .footer-stat { text-align: center; }
+        .footer-stat-value { font-size: 1.5rem; font-weight: 700; color: var(--langchain-green); }
+        .footer-stat-label { font-size: 0.8rem; opacity: 0.7; text-transform: uppercase; }
+
+        .two-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        @media (max-width: 768px) {
+            .two-columns { grid-template-columns: 1fr; }
+            .nav-footer { flex-direction: column; gap: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <a href="#" class="nav-brand">HACI on <span>LangSmith</span></a>
+        <div class="nav-links">
+            <a href="haci_langsmith_1_setup.html">Setup</a>
+            <a href="#" class="active">Graph Architecture</a>
+            <a href="haci_langsmith_3_agents.html">Agents</a>
+            <a href="haci_langsmith_4_observability.html">Observability</a>
+            <span class="page-indicator">Page 2 of 4</span>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <h1>LangGraph Architecture</h1>
+        <p class="subtitle">Implementing HACI's harness loop and multi-agent swarms as stateful graphs with conditional routing</p>
+    </section>
+
+    <div class="stats-bar">
+        <div class="stat-item">
+            <div class="stat-value">4</div>
+            <div class="stat-label">Phase Nodes</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">3</div>
+            <div class="stat-label">Routing Conditions</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">5</div>
+            <div class="stat-label">State Fields</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">∞</div>
+            <div class="stat-label">Checkpoint History</div>
+        </div>
+    </div>
+
+    <main class="main-content">
+        <!-- State Schema -->
+        <section class="section">
+            <h2 class="section-title">Step 1: Define State Schema</h2>
+            <p class="section-intro">
+                LangGraph uses TypedDict to define the state that flows through the graph. This state persists across harness iterations and is checkpointed automatically.
+            </p>
+
+            <div class="code-header">
+                <span>src/state/harness_state.py</span>
+                <span>python</span>
+            </div>
+            <div class="code-block">
+<pre><span class="string">"""
+HACI Harness State Schema for LangGraph
+
+This defines the state that flows through the THINK→ACT→OBSERVE→EVALUATE
+harness loop. LangGraph will automatically checkpoint this state.
+"""</span>
+
+<span class="keyword">from</span> typing <span class="keyword">import</span> TypedDict, List, Optional, Literal, Annotated
+<span class="keyword">from</span> pydantic <span class="keyword">import</span> BaseModel, Field
+<span class="keyword">from</span> datetime <span class="keyword">import</span> datetime
+<span class="keyword">import</span> operator
+
+
+<span class="comment"># ============================================================================</span>
+<span class="comment"># Pydantic Models for Structured Data</span>
+<span class="comment"># ============================================================================</span>
+
+<span class="keyword">class</span> <span class="class">Hypothesis</span>(BaseModel):
+    <span class="string">"""A hypothesis about the root cause."""</span>
+    id: <span class="type">str</span>
+    description: <span class="type">str</span>
+    confidence: <span class="type">float</span> = Field(ge=<span class="number">0.0</span>, le=<span class="number">1.0</span>)
+    evidence: List[<span class="type">str</span>] = []
+    status: Literal[<span class="string">"active"</span>, <span class="string">"confirmed"</span>, <span class="string">"refuted"</span>] = <span class="string">"active"</span>
+
+
+<span class="keyword">class</span> <span class="class">ToolCall</span>(BaseModel):
+    <span class="string">"""Record of a tool execution."""</span>
+    tool_name: <span class="type">str</span>
+    parameters: <span class="type">dict</span>
+    result: Optional[<span class="type">str</span>] = <span class="keyword">None</span>
+    error: Optional[<span class="type">str</span>] = <span class="keyword">None</span>
+    duration_ms: Optional[<span class="type">int</span>] = <span class="keyword">None</span>
+    timestamp: <span class="type">datetime</span> = Field(default_factory=datetime.utcnow)
+
+
+<span class="keyword">class</span> <span class="class">Observation</span>(BaseModel):
+    <span class="string">"""An observation from tool results."""</span>
+    id: <span class="type">str</span>
+    source_tool: <span class="type">str</span>
+    finding: <span class="type">str</span>
+    supports_hypothesis: Optional[<span class="type">str</span>] = <span class="keyword">None</span>  <span class="comment"># hypothesis_id</span>
+    confidence_impact: <span class="type">float</span> = <span class="number">0.0</span>  <span class="comment"># How much this changes confidence</span>
+
+
+<span class="keyword">class</span> <span class="class">Finding</span>(BaseModel):
+    <span class="string">"""A validated finding ready to publish."""</span>
+    id: <span class="type">str</span>
+    agent_id: <span class="type">str</span>
+    root_cause: <span class="type">str</span>
+    confidence: <span class="type">float</span>
+    evidence: List[<span class="type">str</span>]
+    recommendation: Optional[<span class="type">str</span>] = <span class="keyword">None</span>
+    requires_approval: <span class="type">bool</span> = <span class="keyword">False</span>
+
+
+<span class="comment"># ============================================================================</span>
+<span class="comment"># LangGraph State TypedDict</span>
+<span class="comment"># ============================================================================</span>
+
+<span class="keyword">class</span> <span class="class">HarnessState</span>(TypedDict):
+    <span class="string">"""
+    The state that flows through the HACI harness graph.
+    
+    LangGraph will:
+    - Automatically checkpoint this state after each node
+    - Allow time-travel debugging via checkpoints
+    - Support human-in-the-loop interrupts at any point
+    """</span>
+    
+    <span class="comment"># ─────────────────────────────────────────────────────────────────────────</span>
+    <span class="comment"># Input Context (set at start, read-only during execution)</span>
+    <span class="comment"># ─────────────────────────────────────────────────────────────────────────</span>
+    ticket_id: <span class="type">str</span>
+    ticket_description: <span class="type">str</span>
+    ticket_severity: Literal[<span class="string">"low"</span>, <span class="string">"medium"</span>, <span class="string">"high"</span>, <span class="string">"critical"</span>]
+    customer_context: Optional[<span class="type">str</span>]
+    
+    <span class="comment"># ─────────────────────────────────────────────────────────────────────────</span>
+    <span class="comment"># Execution Configuration</span>
+    <span class="comment"># ─────────────────────────────────────────────────────────────────────────</span>
+    execution_mode: Literal[<span class="string">"single_agent"</span>, <span class="string">"micro_swarm"</span>, <span class="string">"full_swarm"</span>, <span class="string">"human_led"</span>]
+    agent_id: <span class="type">str</span>
+    max_iterations: <span class="type">int</span>
+    confidence_threshold: <span class="type">float</span>
+    
+    <span class="comment"># ─────────────────────────────────────────────────────────────────────────</span>
+    <span class="comment"># THINK Phase Output (accumulated with Annotated reducer)</span>
+    <span class="comment"># ─────────────────────────────────────────────────────────────────────────</span>
+    hypotheses: Annotated[List[Hypothesis], operator.add]
+    investigation_plan: List[<span class="type">dict</span>]  <span class="comment"># Actions to execute</span>
+    
+    <span class="comment"># ─────────────────────────────────────────────────────────────────────────</span>
+    <span class="comment"># ACT Phase Output</span>
+    <span class="comment"># ─────────────────────────────────────────────────────────────────────────</span>
+    tool_calls: Annotated[List[ToolCall], operator.add]
+    pending_actions: List[<span class="type">dict</span>]  <span class="comment"># Actions not yet executed</span>
+    
+    <span class="comment"># ─────────────────────────────────────────────────────────────────────────</span>
+    <span class="comment"># OBSERVE Phase Output</span>
+    <span class="comment"># ─────────────────────────────────────────────────────────────────────────</span>
+    observations: Annotated[List[Observation], operator.add]
+    correlations: List[<span class="type">dict</span>]  <span class="comment"># Cross-observation patterns</span>
+    gaps: List[<span class="type">str</span>]  <span class="comment"># What we still don't know</span>
+    
+    <span class="comment"># ─────────────────────────────────────────────────────────────────────────</span>
+    <span class="comment"># EVALUATE Phase Output</span>
+    <span class="comment"># ─────────────────────────────────────────────────────────────────────────</span>
+    current_confidence: <span class="type">float</span>
+    decision: Literal[<span class="string">"continue"</span>, <span class="string">"complete"</span>, <span class="string">"escalate"</span>]
+    finding: Optional[Finding]
+    escalation_reason: Optional[<span class="type">str</span>]
+    
+    <span class="comment"># ─────────────────────────────────────────────────────────────────────────</span>
+    <span class="comment"># Loop Control</span>
+    <span class="comment"># ─────────────────────────────────────────────────────────────────────────</span>
+    iteration_count: <span class="type">int</span>
+    current_phase: Literal[<span class="string">"think"</span>, <span class="string">"act"</span>, <span class="string">"observe"</span>, <span class="string">"evaluate"</span>, <span class="string">"complete"</span>]
+    
+    <span class="comment"># ─────────────────────────────────────────────────────────────────────────</span>
+    <span class="comment"># Human-in-the-Loop</span>
+    <span class="comment"># ─────────────────────────────────────────────────────────────────────────</span>
+    requires_human_approval: <span class="type">bool</span>
+    human_feedback: Optional[<span class="type">str</span>]
+    approval_status: Optional[Literal[<span class="string">"pending"</span>, <span class="string">"approved"</span>, <span class="string">"rejected"</span>]]
+
+
+<span class="comment"># Helper function to create initial state</span>
+<span class="keyword">def</span> <span class="function">create_initial_state</span>(
+    ticket_id: <span class="type">str</span>,
+    ticket_description: <span class="type">str</span>,
+    ticket_severity: <span class="type">str</span> = <span class="string">"medium"</span>,
+    agent_id: <span class="type">str</span> = <span class="string">"log_agent"</span>,
+    execution_mode: <span class="type">str</span> = <span class="string">"single_agent"</span>,
+    **kwargs
+) -> HarnessState:
+    <span class="string">"""Create initial harness state for a new investigation."""</span>
+    <span class="keyword">return</span> HarnessState(
+        <span class="comment"># Input</span>
+        ticket_id=ticket_id,
+        ticket_description=ticket_description,
+        ticket_severity=ticket_severity,
+        customer_context=kwargs.get(<span class="string">"customer_context"</span>),
+        
+        <span class="comment"># Config</span>
+        execution_mode=execution_mode,
+        agent_id=agent_id,
+        max_iterations=kwargs.get(<span class="string">"max_iterations"</span>, <span class="number">10</span>),
+        confidence_threshold=kwargs.get(<span class="string">"confidence_threshold"</span>, <span class="number">0.80</span>),
+        
+        <span class="comment"># Initialize empty collections</span>
+        hypotheses=[],
+        investigation_plan=[],
+        tool_calls=[],
+        pending_actions=[],
+        observations=[],
+        correlations=[],
+        gaps=[],
+        
+        <span class="comment"># Initial evaluation state</span>
+        current_confidence=<span class="number">0.0</span>,
+        decision=<span class="string">"continue"</span>,
+        finding=<span class="keyword">None</span>,
+        escalation_reason=<span class="keyword">None</span>,
+        
+        <span class="comment"># Loop control</span>
+        iteration_count=<span class="number">0</span>,
+        current_phase=<span class="string">"think"</span>,
+        
+        <span class="comment"># Human gate</span>
+        requires_human_approval=<span class="keyword">False</span>,
+        human_feedback=<span class="keyword">None</span>,
+        approval_status=<span class="keyword">None</span>,
+    )</pre>
+            </div>
+
+            <div class="callout info">
+                <div class="callout-title">💡 Annotated Reducers</div>
+                <p>The <code>Annotated[List[...], operator.add]</code> syntax tells LangGraph how to merge state updates. When a node returns <code>{"hypotheses": [new_hyp]}</code>, LangGraph appends to the existing list instead of replacing it. This is essential for accumulating findings across iterations.</p>
+            </div>
+        </section>
+
+        <!-- Harness Graph -->
+        <section class="section">
+            <h2 class="section-title">Step 2: Build Harness Graph</h2>
+            <p class="section-intro">
+                The harness graph implements THINK→ACT→OBSERVE→EVALUATE as nodes with conditional routing back to THINK or forward to completion.
+            </p>
+
+            <div class="phase-flow">
+                <div class="phase-box think">THINK</div>
+                <span class="phase-arrow">→</span>
+                <div class="phase-box act">ACT</div>
+                <span class="phase-arrow">→</span>
+                <div class="phase-box observe">OBSERVE</div>
+                <span class="phase-arrow">→</span>
+                <div class="phase-box evaluate">EVALUATE</div>
+                <span class="phase-arrow">→</span>
+                <div class="phase-box router">ROUTER</div>
+            </div>
+
+            <div class="code-header">
+                <span>src/graphs/harness_graph.py</span>
+                <span>python</span>
+            </div>
+            <div class="code-block">
+<pre><span class="string">"""
+HACI Harness Graph Implementation
+
+This module creates the LangGraph StateGraph that implements the
+THINK→ACT→OBSERVE→EVALUATE harness loop with conditional routing.
+"""</span>
+
+<span class="keyword">from</span> typing <span class="keyword">import</span> Literal
+<span class="keyword">from</span> langgraph.graph <span class="keyword">import</span> StateGraph, START, END
+<span class="keyword">from</span> langgraph.checkpoint.memory <span class="keyword">import</span> MemorySaver
+<span class="keyword">from</span> langsmith <span class="keyword">import</span> traceable
+
+<span class="keyword">from</span> src.state.harness_state <span class="keyword">import</span> HarnessState
+<span class="keyword">from</span> src.agents.base_agent <span class="keyword">import</span> BaseAgent
+
+
+<span class="comment"># ============================================================================</span>
+<span class="comment"># Phase Node Functions</span>
+<span class="comment"># ============================================================================</span>
+
+<span class="decorator">@traceable</span>(name=<span class="string">"harness_think_phase"</span>)
+<span class="keyword">async def</span> <span class="function">think_node</span>(state: HarnessState, agent: BaseAgent) -> <span class="type">dict</span>:
+    <span class="string">"""
+    THINK Phase: Analyze input and form hypotheses.
+    
+    - Examines ticket description and context
+    - Forms hypotheses about root cause
+    - Creates investigation plan
+    
+    Returns partial state update with hypotheses and plan.
+    """</span>
+    <span class="keyword">print</span>(<span class="string">f"🧠 THINK Phase - Iteration {state['iteration_count'] + 1}"</span>)
+    
+    <span class="comment"># Build context for thinking</span>
+    context = {
+        <span class="string">"ticket"</span>: state[<span class="string">"ticket_description"</span>],
+        <span class="string">"severity"</span>: state[<span class="string">"ticket_severity"</span>],
+        <span class="string">"existing_hypotheses"</span>: [h.dict() <span class="keyword">for</span> h <span class="keyword">in</span> state[<span class="string">"hypotheses"</span>]],
+        <span class="string">"observations"</span>: [o.dict() <span class="keyword">for</span> o <span class="keyword">in</span> state[<span class="string">"observations"</span>]],
+        <span class="string">"gaps"</span>: state[<span class="string">"gaps"</span>],
+    }
+    
+    <span class="comment"># Call agent's think method</span>
+    result = <span class="keyword">await</span> agent.think(context)
+    
+    <span class="keyword">return</span> {
+        <span class="string">"hypotheses"</span>: result[<span class="string">"hypotheses"</span>],
+        <span class="string">"investigation_plan"</span>: result[<span class="string">"investigation_plan"</span>],
+        <span class="string">"current_phase"</span>: <span class="string">"act"</span>,
+    }
+
+
+<span class="decorator">@traceable</span>(name=<span class="string">"harness_act_phase"</span>)
+<span class="keyword">async def</span> <span class="function">act_node</span>(state: HarnessState, agent: BaseAgent) -> <span class="type">dict</span>:
+    <span class="string">"""
+    ACT Phase: Execute tools from investigation plan.
+    
+    - Executes tools specified in the plan
+    - Respects mode-specific constraints (max tools, timeouts)
+    - Handles tool errors gracefully
+    
+    Returns partial state update with tool call results.
+    """</span>
+    <span class="keyword">print</span>(<span class="string">f"⚡ ACT Phase - Executing {len(state['investigation_plan'])} actions"</span>)
+    
+    <span class="comment"># Execute investigation plan</span>
+    tool_results = <span class="keyword">await</span> agent.act(state[<span class="string">"investigation_plan"</span>])
+    
+    <span class="keyword">return</span> {
+        <span class="string">"tool_calls"</span>: tool_results,
+        <span class="string">"pending_actions"</span>: [],  <span class="comment"># Clear pending</span>
+        <span class="string">"current_phase"</span>: <span class="string">"observe"</span>,
+    }
+
+
+<span class="decorator">@traceable</span>(name=<span class="string">"harness_observe_phase"</span>)
+<span class="keyword">async def</span> <span class="function">observe_node</span>(state: HarnessState, agent: BaseAgent) -> <span class="type">dict</span>:
+    <span class="string">"""
+    OBSERVE Phase: Analyze tool results and extract insights.
+    
+    - Processes tool outputs
+    - Identifies patterns and correlations
+    - Updates hypothesis confidence
+    - Identifies remaining gaps
+    
+    Returns partial state update with observations.
+    """</span>
+    <span class="keyword">print</span>(<span class="string">f"👁️ OBSERVE Phase - Processing {len(state['tool_calls'])} results"</span>)
+    
+    <span class="comment"># Get recent tool calls from this iteration</span>
+    recent_calls = state[<span class="string">"tool_calls"</span>][-len(state[<span class="string">"investigation_plan"</span>]):]
+    
+    <span class="comment"># Analyze results</span>
+    observations = <span class="keyword">await</span> agent.observe(
+        tool_results=[tc.dict() <span class="keyword">for</span> tc <span class="keyword">in</span> recent_calls],
+        hypotheses=[h.dict() <span class="keyword">for</span> h <span class="keyword">in</span> state[<span class="string">"hypotheses"</span>]]
+    )
+    
+    <span class="keyword">return</span> {
+        <span class="string">"observations"</span>: observations[<span class="string">"observations"</span>],
+        <span class="string">"correlations"</span>: observations.get(<span class="string">"correlations"</span>, []),
+        <span class="string">"gaps"</span>: observations.get(<span class="string">"gaps"</span>, []),
+        <span class="string">"current_phase"</span>: <span class="string">"evaluate"</span>,
+    }
+
+
+<span class="decorator">@traceable</span>(name=<span class="string">"harness_evaluate_phase"</span>)
+<span class="keyword">async def</span> <span class="function">evaluate_node</span>(state: HarnessState, agent: BaseAgent) -> <span class="type">dict</span>:
+    <span class="string">"""
+    EVALUATE Phase: Assess progress and decide next action.
+    
+    - Calculates confidence from evidence
+    - Decides: CONTINUE (loop back), COMPLETE, or ESCALATE
+    - Generates finding if confident enough
+    
+    Returns partial state update with decision.
+    """</span>
+    <span class="keyword">print</span>(<span class="string">f"📊 EVALUATE Phase - Assessing confidence"</span>)
+    
+    <span class="comment"># Calculate confidence</span>
+    evaluation = <span class="keyword">await</span> agent.evaluate(
+        hypotheses=[h.dict() <span class="keyword">for</span> h <span class="keyword">in</span> state[<span class="string">"hypotheses"</span>]],
+        observations=[o.dict() <span class="keyword">for</span> o <span class="keyword">in</span> state[<span class="string">"observations"</span>]],
+        gaps=state[<span class="string">"gaps"</span>],
+        iteration=state[<span class="string">"iteration_count"</span>] + <span class="number">1</span>,
+        max_iterations=state[<span class="string">"max_iterations"</span>],
+    )
+    
+    confidence = evaluation[<span class="string">"confidence"</span>]
+    iteration = state[<span class="string">"iteration_count"</span>] + <span class="number">1</span>
+    
+    <span class="comment"># Decision logic</span>
+    <span class="keyword">if</span> confidence >= state[<span class="string">"confidence_threshold"</span>]:
+        decision = <span class="string">"complete"</span>
+        finding = evaluation.get(<span class="string">"finding"</span>)
+    <span class="keyword">elif</span> iteration >= state[<span class="string">"max_iterations"</span>]:
+        decision = <span class="string">"escalate"</span>
+        finding = <span class="keyword">None</span>
+    <span class="keyword">else</span>:
+        decision = <span class="string">"continue"</span>
+        finding = <span class="keyword">None</span>
+    
+    <span class="keyword">print</span>(<span class="string">f"   Confidence: {confidence:.2f} | Decision: {decision}"</span>)
+    
+    <span class="keyword">return</span> {
+        <span class="string">"current_confidence"</span>: confidence,
+        <span class="string">"decision"</span>: decision,
+        <span class="string">"finding"</span>: finding,
+        <span class="string">"escalation_reason"</span>: evaluation.get(<span class="string">"escalation_reason"</span>),
+        <span class="string">"iteration_count"</span>: iteration,
+        <span class="string">"current_phase"</span>: <span class="string">"complete"</span> <span class="keyword">if</span> decision != <span class="string">"continue"</span> <span class="keyword">else</span> <span class="string">"think"</span>,
+    }
+
+
+<span class="comment"># ============================================================================</span>
+<span class="comment"># Routing Function</span>
+<span class="comment"># ============================================================================</span>
+
+<span class="keyword">def</span> <span class="function">route_after_evaluate</span>(state: HarnessState) -> Literal[<span class="string">"think"</span>, <span class="string">"complete"</span>, <span class="string">"human_gate"</span>]:
+    <span class="string">"""
+    Routing logic after EVALUATE phase.
+    
+    Returns the next node to execute:
+    - "think": Loop back for another iteration
+    - "complete": Investigation finished
+    - "human_gate": Requires human approval before proceeding
+    """</span>
+    <span class="keyword">if</span> state[<span class="string">"decision"</span>] == <span class="string">"continue"</span>:
+        <span class="keyword">return</span> <span class="string">"think"</span>
+    
+    <span class="comment"># Check if human approval needed</span>
+    <span class="keyword">if</span> state[<span class="string">"decision"</span>] == <span class="string">"complete"</span> <span class="keyword">and</span> state.get(<span class="string">"requires_human_approval"</span>):
+        <span class="keyword">return</span> <span class="string">"human_gate"</span>
+    
+    <span class="keyword">return</span> <span class="string">"complete"</span>
+
+
+<span class="comment"># ============================================================================</span>
+<span class="comment"># Graph Builder</span>
+<span class="comment"># ============================================================================</span>
+
+<span class="keyword">def</span> <span class="function">build_harness_graph</span>(agent: BaseAgent) -> StateGraph:
+    <span class="string">"""
+    Build the HACI harness graph.
+    
+    Args:
+        agent: The specialized agent to use for phase execution
+        
+    Returns:
+        Compiled StateGraph ready for execution
+    """</span>
+    <span class="comment"># Create graph with state schema</span>
+    graph = StateGraph(HarnessState)
+    
+    <span class="comment"># ─────────────────────────────────────────────────────────────────────────</span>
+    <span class="comment"># Add Phase Nodes</span>
+    <span class="comment"># ─────────────────────────────────────────────────────────────────────────</span>
+    
+    <span class="comment"># Bind agent to node functions</span>
+    graph.add_node(<span class="string">"think"</span>, <span class="keyword">lambda</span> s: think_node(s, agent))
+    graph.add_node(<span class="string">"act"</span>, <span class="keyword">lambda</span> s: act_node(s, agent))
+    graph.add_node(<span class="string">"observe"</span>, <span class="keyword">lambda</span> s: observe_node(s, agent))
+    graph.add_node(<span class="string">"evaluate"</span>, <span class="keyword">lambda</span> s: evaluate_node(s, agent))
+    
+    <span class="comment"># Completion nodes</span>
+    graph.add_node(<span class="string">"complete"</span>, <span class="keyword">lambda</span> s: {<span class="string">"current_phase"</span>: <span class="string">"complete"</span>})
+    graph.add_node(<span class="string">"human_gate"</span>, <span class="keyword">lambda</span> s: {<span class="string">"approval_status"</span>: <span class="string">"pending"</span>})
+    
+    <span class="comment"># ─────────────────────────────────────────────────────────────────────────</span>
+    <span class="comment"># Define Edges (Control Flow)</span>
+    <span class="comment"># ─────────────────────────────────────────────────────────────────────────</span>
+    
+    <span class="comment"># Start with THINK</span>
+    graph.add_edge(START, <span class="string">"think"</span>)
+    
+    <span class="comment"># Linear flow: THINK → ACT → OBSERVE → EVALUATE</span>
+    graph.add_edge(<span class="string">"think"</span>, <span class="string">"act"</span>)
+    graph.add_edge(<span class="string">"act"</span>, <span class="string">"observe"</span>)
+    graph.add_edge(<span class="string">"observe"</span>, <span class="string">"evaluate"</span>)
+    
+    <span class="comment"># Conditional routing after EVALUATE</span>
+    graph.add_conditional_edges(
+        <span class="string">"evaluate"</span>,
+        route_after_evaluate,
+        {
+            <span class="string">"think"</span>: <span class="string">"think"</span>,        <span class="comment"># Loop back</span>
+            <span class="string">"complete"</span>: <span class="string">"complete"</span>,  <span class="comment"># Done</span>
+            <span class="string">"human_gate"</span>: <span class="string">"human_gate"</span>,  <span class="comment"># Need approval</span>
+        }
+    )
+    
+    <span class="comment"># End states</span>
+    graph.add_edge(<span class="string">"complete"</span>, END)
+    graph.add_edge(<span class="string">"human_gate"</span>, END)  <span class="comment"># Will be interrupted here</span>
+    
+    <span class="keyword">return</span> graph
+
+
+<span class="keyword">def</span> <span class="function">compile_harness_graph</span>(agent: BaseAgent, checkpointer=<span class="keyword">None</span>):
+    <span class="string">"""
+    Compile the harness graph with optional checkpointing.
+    
+    Args:
+        agent: Specialized agent for execution
+        checkpointer: LangGraph checkpointer (MemorySaver, PostgresSaver, etc.)
+        
+    Returns:
+        Compiled graph ready for invoke/stream
+    """</span>
+    graph = build_harness_graph(agent)
+    
+    <span class="comment"># Use memory saver if no checkpointer provided</span>
+    <span class="keyword">if</span> checkpointer <span class="keyword">is</span> <span class="keyword">None</span>:
+        checkpointer = MemorySaver()
+    
+    <span class="comment"># Compile with interrupt support for human gate</span>
+    compiled = graph.compile(
+        checkpointer=checkpointer,
+        interrupt_before=[<span class="string">"human_gate"</span>],  <span class="comment"># Pause before human approval</span>
+    )
+    
+    <span class="keyword">return</span> compiled</pre>
+            </div>
+        </section>
+
+        <!-- Human-in-the-Loop -->
+        <section class="section">
+            <h2 class="section-title">Step 3: Human-in-the-Loop Gates</h2>
+            <p class="section-intro">
+                LangGraph's interrupt feature enables HACI's human approval gates. The graph pauses at designated points and resumes after human review.
+            </p>
+
+            <div class="two-columns">
+                <div class="card">
+                    <div class="card-header orange">Interrupt Configuration</div>
+                    <div class="card-body">
+                        <p>Configure which nodes require human approval based on execution mode and action type.</p>
+                        <div class="code-block" style="font-size: 0.8rem;">
+<pre><span class="comment"># Interrupt points by mode</span>
+INTERRUPT_CONFIG = {
+    <span class="string">"single_agent"</span>: {
+        <span class="string">"before"</span>: [],  <span class="comment"># No interrupts</span>
+    },
+    <span class="string">"micro_swarm"</span>: {
+        <span class="string">"before"</span>: [<span class="string">"human_gate"</span>],
+    },
+    <span class="string">"full_swarm"</span>: {
+        <span class="string">"before"</span>: [<span class="string">"human_gate"</span>],
+    },
+    <span class="string">"human_led"</span>: {
+        <span class="string">"before"</span>: [<span class="string">"act"</span>, <span class="string">"human_gate"</span>],
+    },
+}</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header teal">Resuming After Approval</div>
+                    <div class="card-body">
+                        <p>After human review, resume the graph with optional state modifications.</p>
+                        <div class="code-block" style="font-size: 0.8rem;">
+<pre><span class="comment"># Resume with approval</span>
+<span class="keyword">await</span> graph.aupdate_state(
+    config,
+    {
+        <span class="string">"approval_status"</span>: <span class="string">"approved"</span>,
+        <span class="string">"human_feedback"</span>: <span class="string">"Looks good"</span>,
+    }
+)
+
+<span class="comment"># Continue execution</span>
+result = <span class="keyword">await</span> graph.ainvoke(
+    <span class="keyword">None</span>,  <span class="comment"># No new input</span>
+    config  <span class="comment"># Same thread</span>
+)</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Running the Graph -->
+        <section class="section">
+            <h2 class="section-title">Step 4: Execute the Graph</h2>
+            <p class="section-intro">
+                Run investigations through the harness graph with full tracing to LangSmith.
+            </p>
+
+            <div class="code-header">
+                <span>src/main.py</span>
+                <span>python</span>
+            </div>
+            <div class="code-block">
+<pre><span class="string">"""
+Example: Running a HACI investigation through the harness graph.
+"""</span>
+
+<span class="keyword">import</span> asyncio
+<span class="keyword">from</span> uuid <span class="keyword">import</span> uuid4
+
+<span class="keyword">from</span> src.graphs.harness_graph <span class="keyword">import</span> compile_harness_graph
+<span class="keyword">from</span> src.state.harness_state <span class="keyword">import</span> create_initial_state
+<span class="keyword">from</span> src.agents.log_agent <span class="keyword">import</span> LogAnalysisAgent
+
+
+<span class="keyword">async def</span> <span class="function">run_investigation</span>(ticket_id: <span class="type">str</span>, description: <span class="type">str</span>):
+    <span class="string">"""Run a complete HACI investigation."""</span>
+    
+    <span class="comment"># 1. Initialize agent</span>
+    agent = LogAnalysisAgent()
+    
+    <span class="comment"># 2. Compile graph with checkpointing</span>
+    graph = compile_harness_graph(agent)
+    
+    <span class="comment"># 3. Create initial state</span>
+    initial_state = create_initial_state(
+        ticket_id=ticket_id,
+        ticket_description=description,
+        ticket_severity=<span class="string">"high"</span>,
+        agent_id=<span class="string">"log_agent"</span>,
+        execution_mode=<span class="string">"single_agent"</span>,
+    )
+    
+    <span class="comment"># 4. Configure thread for checkpointing</span>
+    config = {
+        <span class="string">"configurable"</span>: {
+            <span class="string">"thread_id"</span>: <span class="type">str</span>(uuid4()),
+        },
+        <span class="comment"># LangSmith metadata</span>
+        <span class="string">"metadata"</span>: {
+            <span class="string">"ticket_id"</span>: ticket_id,
+            <span class="string">"agent_type"</span>: <span class="string">"log_agent"</span>,
+            <span class="string">"mode"</span>: <span class="string">"single_agent"</span>,
+        },
+        <span class="string">"tags"</span>: [<span class="string">"haci"</span>, <span class="string">"investigation"</span>, <span class="string">"production"</span>],
+    }
+    
+    <span class="comment"># 5. Run with streaming for real-time updates</span>
+    <span class="keyword">print</span>(<span class="string">f"🚀 Starting investigation for {ticket_id}"</span>)
+    <span class="keyword">print</span>(<span class="string">"="</span> * <span class="number">60</span>)
+    
+    final_state = <span class="keyword">None</span>
+    <span class="keyword">async for</span> event <span class="keyword">in</span> graph.astream(initial_state, config):
+        <span class="comment"># Print phase transitions</span>
+        <span class="keyword">for</span> node_name, state_update <span class="keyword">in</span> event.items():
+            <span class="keyword">if</span> node_name != <span class="string">"__end__"</span>:
+                <span class="keyword">print</span>(<span class="string">f"✓ Completed: {node_name}"</span>)
+        final_state = event
+    
+    <span class="keyword">print</span>(<span class="string">"="</span> * <span class="number">60</span>)
+    <span class="keyword">print</span>(<span class="string">f"🏁 Investigation complete!"</span>)
+    <span class="keyword">print</span>(<span class="string">f"   Decision: {final_state.get('decision')}"</span>)
+    <span class="keyword">print</span>(<span class="string">f"   Confidence: {final_state.get('current_confidence', 0):.2%}"</span>)
+    <span class="keyword">print</span>(<span class="string">f"   Iterations: {final_state.get('iteration_count')}"</span>)
+    
+    <span class="keyword">if</span> final_state.get(<span class="string">"finding"</span>):
+        <span class="keyword">print</span>(<span class="string">f"\n📋 Finding:"</span>)
+        <span class="keyword">print</span>(<span class="string">f"   Root Cause: {final_state['finding'].root_cause}"</span>)
+    
+    <span class="keyword">return</span> final_state
+
+
+<span class="keyword">if</span> __name__ == <span class="string">"__main__"</span>:
+    asyncio.run(run_investigation(
+        ticket_id=<span class="string">"TICKET-12345"</span>,
+        description=<span class="string">"""
+        Customer reports intermittent 500 errors on checkout API.
+        Started around 2pm PST. Affecting approximately 15% of requests.
+        No recent deployments. Customer urgency: HIGH.
+        """</span>
+    ))</pre>
+            </div>
+
+            <div class="callout success">
+                <div class="callout-title">✅ Automatic LangSmith Tracing</div>
+                <p>With <code>LANGSMITH_TRACING=true</code>, every node execution, LLM call, and tool invocation is automatically traced. The <code>@traceable</code> decorators add custom spans for each harness phase, and the config metadata tags traces with ticket info for easy filtering.</p>
+            </div>
+        </section>
+
+        <!-- Navigation -->
+        <div class="nav-footer">
+            <a href="haci_langsmith_1_setup.html" class="nav-btn">
+                ← Previous: Setup
+            </a>
+            <a href="haci_langsmith_3_agents.html" class="nav-btn">
+                Next: Agent Implementation →
+            </a>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-stats">
+            <div class="footer-stat">
+                <div class="footer-stat-value">StateGraph</div>
+                <div class="footer-stat-label">Core Abstraction</div>
+            </div>
+            <div class="footer-stat">
+                <div class="footer-stat-value">TypedDict</div>
+                <div class="footer-stat-label">State Schema</div>
+            </div>
+            <div class="footer-stat">
+                <div class="footer-stat-value">Checkpoints</div>
+                <div class="footer-stat-label">Time Travel</div>
+            </div>
+        </div>
+        <p>HACI Implementation Guide • LangSmith Edition</p>
+        <p style="opacity: 0.7; margin-top: 0.5rem;">Page 2 of 4 • Graph Architecture</p>
+    </footer>
+</body>
+</html>
