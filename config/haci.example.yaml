@@ -1,0 +1,129 @@
+# HACI Configuration
+# Copy to config/haci.yaml and customize for your environment
+
+# Core settings
+environment: development
+debug: false
+log_level: INFO
+
+# Execution configuration
+execution:
+  default_mode: auto  # auto, single_agent, micro_swarm, full_swarm, human_led
+  confidence_thresholds:
+    auto_execute: 95      # >= 95%: Automatic execution
+    execute_review: 85    # 85-94%: Execute with post-review
+    require_approval: 70  # 70-84%: Require human approval
+    human_led: 0          # < 70%: Human-led with AI assistance
+  max_swarm_agents: 10
+  timeout_seconds: 300
+
+# Agent configurations
+agents:
+  log_analyst:
+    model: claude-sonnet-4-20250514
+    max_tokens: 8000
+    temperature: 0.1
+    enabled: true
+  
+  code_specialist:
+    model: claude-sonnet-4-20250514
+    max_tokens: 16000
+    temperature: 0.1
+    enabled: true
+  
+  database_expert:
+    model: claude-sonnet-4-20250514
+    max_tokens: 8000
+    temperature: 0.1
+    enabled: true
+  
+  infrastructure_ops:
+    model: claude-sonnet-4-20250514
+    max_tokens: 8000
+    temperature: 0.1
+    enabled: true
+  
+  security_analyst:
+    model: claude-sonnet-4-20250514
+    max_tokens: 8000
+    temperature: 0.1
+    enabled: true
+  
+  api_specialist:
+    model: claude-sonnet-4-20250514
+    max_tokens: 8000
+    temperature: 0.1
+    enabled: true
+  
+  performance_engineer:
+    model: claude-sonnet-4-20250514
+    max_tokens: 8000
+    temperature: 0.1
+    enabled: true
+  
+  documentation_writer:
+    model: claude-sonnet-4-20250514
+    max_tokens: 4000
+    temperature: 0.3
+    enabled: true
+  
+  communication_manager:
+    model: claude-sonnet-4-20250514
+    max_tokens: 4000
+    temperature: 0.3
+    enabled: true
+  
+  swarm_coordinator:
+    model: claude-opus-4-20250514
+    max_tokens: 16000
+    temperature: 0.1
+    enabled: true
+
+# Database configuration
+database:
+  url: postgresql://localhost:5432/haci
+  pool_size: 10
+  max_overflow: 20
+
+# Redis configuration
+redis:
+  url: redis://localhost:6379
+  prefix: "haci:"
+
+# Integration configuration
+integrations:
+  mcp:
+    enabled: true
+    servers:
+      - name: jira-mcp
+        url: ${JIRA_MCP_URL:-}
+        enabled: false
+        timeout_seconds: 30
+      
+      - name: github-mcp
+        url: ${GITHUB_MCP_URL:-}
+        enabled: false
+        timeout_seconds: 30
+      
+      - name: slack-mcp
+        url: ${SLACK_MCP_URL:-}
+        enabled: false
+        timeout_seconds: 30
+  
+  api:
+    enabled: true
+    providers:
+      - name: datadog
+        base_url: https://api.datadoghq.com
+        auth_type: api_key
+        enabled: false
+      
+      - name: pagerduty
+        base_url: https://api.pagerduty.com
+        auth_type: api_key
+        enabled: false
+      
+      - name: aws
+        base_url: https://aws.amazon.com
+        auth_type: iam
+        enabled: false
